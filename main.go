@@ -11,9 +11,12 @@ import (
 	"io/fs"
 	"log"
 	"net/http"
+	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"headeranalyzer/parser"
@@ -24,8 +27,9 @@ import (
 )
 
 var (
-	addr = flag.String("host", "127.0.0.1", "IP to bind")
-	port = flag.Int("port", 5555, "Port to run on")
+	addr     = flag.String("host", "127.0.0.1", "IP to bind")
+	port     = flag.Int("port", 5555, "Port to run on")
+	headless = flag.Bool("headless", false, "Force headless mode (disable system tray)")
 )
 
 //go:embed web/*
@@ -81,6 +85,43 @@ func openBrowser(url string) {
 	default:
 		exec.Command("xdg-open", url).Start()
 	}
+}
+
+// isHeadless checks if the system is running in a headless environment
+func isHeadless() bool {
+	// Check for common headless indicators
+	if runtime.GOOS == "windows" {
+		// On Windows, assume GUI is available
+		return false
+	}
+
+	// Check if DISPLAY is set (X11)
+	if display := os.Getenv("DISPLAY"); display != "" {
+		return false
+	}
+
+	// Check if WAYLAND_DISPLAY is set (Wayland)
+	if waylandDisplay := os.Getenv("WAYLAND_DISPLAY"); waylandDisplay != "" {
+		return false
+	}
+
+	// Check if XDG_SESSION_TYPE indicates a graphical session
+	if sessionType := os.Getenv("XDG_SESSION_TYPE"); sessionType == "x11" || sessionType == "wayland" {
+		return false
+	}
+
+	// Check if we're in SSH session
+	if os.Getenv("SSH_CONNECTION") != "" || os.Getenv("SSH_CLIENT") != "" || os.Getenv("SSH_TTY") != "" {
+		return true
+	}
+
+	// Check if TERM indicates we're in a terminal
+	if term := os.Getenv("TERM"); term == "linux" || strings.Contains(term, "tty") {
+		return true
+	}
+
+	// If none of the above, assume headless on Linux/Unix
+	return runtime.GOOS == "linux"
 }
 
 func main() {
@@ -538,10 +579,34 @@ func main() {
 		log.Fatal(srv.ListenAndServe())
 	}()
 
-	systray.Run(func() { onReady(addrPort, shutdownCh) }, func() {})
+	// Check if we're in a headless environment
+	if *headless || isHeadless() {
+		if *headless {
+			fmt.Println("Headless mode forced via command line flag.")
+		} else {
+			fmt.Println("Headless environment detected. System tray disabled.")
+		}
+		fmt.Printf("Access the web interface at: http://%s\n", addrPort)
+		fmt.Println("Press Ctrl+C to stop the server.")
 
-	<-shutdownCh
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	srv.Shutdown(ctx)
+		// Set up signal handling for graceful shutdown
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+		// Wait for interrupt signal
+		<-sigChan
+		fmt.Println("\nShutting down server...")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+	} else {
+		fmt.Println("GUI environment detected. Starting system tray...")
+		systray.Run(func() { onReady(addrPort, shutdownCh) }, func() {})
+
+		<-shutdownCh
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		srv.Shutdown(ctx)
+	}
 }
