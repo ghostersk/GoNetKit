@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DNS Tools</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .dns-tools-container { max-width: 900px; margin: 0 auto; }
+        .dns-query-form { display: flex; gap: 10px; margin-bottom: 10px; }
+        .dns-query-form input, .dns-query-form select { padding: 7px; border-radius: 4px; border: 1px solid #444; background: #232323; color: #e0e0e0; }
+        .dns-query-form button { padding: 7px 16px; }
+        .dns-results { margin-top: 10px; }
+        .dns-result-block { background: #232323; border-radius: 6px; margin-bottom: 12px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.12); }
+        .dns-result-block pre { white-space: pre-wrap; word-break: break-word; font-size: 1em; }
+        .save-btns { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/">Analyze New Header</a>
+    <a href="/dns">DNS Tools</a>
+    <a href="/password">Password Generator</a>
+</nav>
+<div class="dns-tools-container">
+    <h1>DNS Tools</h1>
+    <form class="dns-query-form" id="dnsForm" onsubmit="return false;">
+        <input type="text" id="dnsInput" placeholder="Enter domain or IP" required>
+        <select id="dnsType">
+            <option value="A">A</option>
+            <option value="AAAA">AAAA</option>
+            <option value="MX">MX</option>
+            <option value="TXT">TXT</option>
+            <option value="NS">NS</option>
+            <option value="CNAME">CNAME</option>
+            <option value="PTR">PTR</option>
+            <option value="SOA">SOA</option>
+            <option value="SPF">SPF</option>
+            <option value="DKIM">DKIM</option>
+            <option value="DMARC">DMARC</option>
+            <option value="WHOIS">WHOIS</option>
+        </select>
+        <input type="text" id="dnsServer" placeholder="Custom DNS server (optional)" style="width:180px;" autocomplete="off">
+        <button type="submit">Query</button>
+    </form>
+    <div class="save-btns">
+        <button onclick="saveResults('csv')">Save as CSV</button>
+        <button onclick="saveResults('txt')">Save as TXT</button>
+    </div>
+    <div class="dns-results" id="dnsResults"></div>
+</div>
+<script>
+let results = [];
+
+function renderResults() {
+    const container = document.getElementById('dnsResults');
+    container.innerHTML = '';
+    results.forEach(r => {
+        const block = document.createElement('div');
+        block.className = 'dns-result-block';
+        block.innerHTML = `<b>${r.type} for ${r.query}</b><br><pre>${r.result}</pre>`;
+        container.appendChild(block);
+    });
+}
+
+document.getElementById('dnsForm').addEventListener('submit', async function() {
+    const query = document.getElementById('dnsInput').value.trim();
+    const type = document.getElementById('dnsType').value;
+    let url = `/api/dns?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`;
+    const dnsServer = document.getElementById('dnsServer').value.trim();
+    if (dnsServer) url += `&server=${encodeURIComponent(dnsServer)}`;
+    let res = await fetch(url);
+    let data = await res.text();
+    results.unshift({query, type, result: data});
+    renderResults();
+});
+
+function saveResults(format) {
+    let content = '';
+    if (format === 'csv') {
+        content = 'Type,Query,Result\n' + results.map(r => `${r.type},${r.query},"${r.result.replace(/"/g, '""')}"`).join('\n');
+    } else {
+        content = results.map(r => `${r.type} for ${r.query}\n${r.result}\n`).join('\n');
+    }
+    const blob = new Blob([content], {type: 'text/plain'});
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `dnswhois_results.${format}`;
+    link.click();
+}
+</script>
+</body>
+</html>
