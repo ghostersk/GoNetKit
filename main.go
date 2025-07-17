@@ -40,7 +40,7 @@ func onReady(addrPort string, shutdownCh chan struct{}) {
 	if runtime.GOOS == "windows" {
 		iconPath = "web/favicon.ico"
 	} else {
-		iconPath = "web/favicon.png"
+		iconPath = "web/favicon.ico"
 	}
 
 	iconData, err := fs.ReadFile(embeddedFiles, iconPath)

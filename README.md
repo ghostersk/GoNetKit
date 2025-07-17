@@ -7,7 +7,10 @@ This app uses Go's `embed` package to bundle all static files (web UI, icons, CS
 ### Prerequisites
 - [Go 1.16+](https://golang.org/dl/) (required for `embed`)
 - (Optional) [Python 3](https://www.python.org/) with Pillow for icon conversion
-
+```go
+go mod init headeranalyzer
+go mod tidy
+```
 ### 1. Prepare Icons
 - Place your tray icon and favicon in `web/icon.png` and `web/favicon.png`.
 - For Windows tray icon, you **must** use a `.ico` file. Use the provided script:
