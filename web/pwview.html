@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Secret - Password Pusher</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #e0e0e0;
+            --section-bg: #2d2d2d;
+            --border-color: #404040;
+            --highlight: #3c5c7c;
+            --success: #4caf50;
+            --warning: #ff9800;
+            --error: #f44336;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            color: var(--text-color);
+            font-size: 2.5rem;
+        }
+
+        .meta-info {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 20px;
+        }
+
+        .meta-item {
+            background-color: var(--section-bg);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .click-to-reveal {
+            display: flex;
+            justify-content: center;
+            margin: 40px 0;
+        }
+
+        .reveal-box {
+            background-color: var(--section-bg);
+            padding: 50px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            text-align: center;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .reveal-box h3 {
+            margin-bottom: 20px;
+            color: var(--text-color);
+            font-size: 1.5rem;
+        }
+
+        .reveal-box p {
+            margin-bottom: 20px;
+            color: #ccc;
+        }
+
+        .warning-text {
+            color: #fec;
+            background-color: #442;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--warning);
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .content-container {
+            background-color: var(--section-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px 0;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .content-header {
+            background-color: #333;
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-header h3 {
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .content-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .content-box {
+            padding: 0;
+        }
+
+        .content-box pre {
+            margin: 0;
+            padding: 30px;
+            background-color: var(--section-bg);
+            color: var(--text-color);
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+            border: none;
+        }
+
+        .content-footer {
+            background-color: #333;
+            padding: 15px 20px;
+            border-top: 1px solid var(--border-color);
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .alert {
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .alert-error {
+            background-color: #441;
+            color: #fcc;
+            border-color: var(--error);
+        }
+
+        .alert-warning {
+            background-color: #442;
+            color: #fec;
+            border-color: var(--warning);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: var(--highlight);
+            color: white;
+            font-size: 18px;
+            padding: 15px 30px;
+        }
+
+        .btn-primary:hover {
+            background: #2a4c6c;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-large {
+            padding: 18px 36px;
+            font-size: 20px;
+        }
+
+        .actions {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .reveal-box {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+            
+            .content-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            .content-actions {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .content-box pre {
+                padding: 20px;
+                font-size: 14px;
+            }
+        }
+
+        /* Scrollbar styling */
+        .content-box pre::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .content-box pre::-webkit-scrollbar-track {
+            background: #333;
+        }
+
+        .content-box pre::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+
+        .content-box pre::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+
+        /* Password form styling */
+        .password-form-container {
+            background: var(--bg-color);
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .attempts-info {
+            padding: 10px;
+            background: rgba(255, 152, 0, 0.1);
+            border-left: 4px solid var(--warning);
+            border-radius: 4px;
+        }
+
+        .password-form-container input[type="password"] {
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .password-form-container input[type="password"]:focus {
+            border-color: var(--highlight);
+            box-shadow: 0 0 0 3px rgba(60, 92, 124, 0.3);
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    {{if and .Error (not .RequirePassword)}}
+    <!-- Handle general errors (not password-related) -->
+    <div class="alert alert-error">
+        <h2>❌ {{.Error}}</h2>
+        <p>The link you're trying to access is no longer available.</p>
+        <div class="actions">
+            <a href="/pwpush" class="btn btn-primary">🔒 Create New Secure Link</a>
+        </div>
+    </div>
+    
+    {{else if .RequirePassword}}
+    <!-- Password protection flow -->
+    <div class="header">
+        <h1>🔐 Secure Text</h1>
+    </div>
+    
+    <div class="click-to-reveal">
+        <div class="reveal-box">
+            <h3>🔑 Password Required</h3>
+            <p>This content is password protected. Please enter the password to view it.</p>
+            
+            {{if .IsBlocked}}
+            <div class="alert alert-error" style="margin: 20px 0;">
+                <strong>🚫 Access Temporarily Blocked</strong><br>
+                You have exceeded the maximum number of password attempts (5).<br>
+                Please try again after <strong>{{.BlockedUntil.Format "15:04:05"}}</strong>
+            </div>
+            <div class="actions" style="margin-top: 30px;">
+                <a href="/pwpush" class="btn btn-primary">🔒 Create New Secure Link</a>
+            </div>
+            {{else}}
+            
+            {{if .InvalidPassword}}
+            <div class="alert alert-error" style="margin: 20px 0;">
+                <strong>❌ {{.Error}}</strong>
+            </div>
+            {{end}}
+            
+            <div class="password-form-container">
+                <form method="post" style="margin-top: 30px;">
+                    {{if .CSRFToken}}
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    {{end}}
+                    <input type="hidden" name="action" value="verify_password">
+                    <div style="margin-bottom: 20px;">
+                        <input type="password" name="password" placeholder="Enter password" required 
+                               style="width: 100%; max-width: 400px; padding: 15px 20px; border: 2px solid var(--border-color); 
+                                      border-radius: 8px; background-color: var(--section-bg); color: var(--text-color); 
+                                      font-size: 18px; font-family: monospace;" autofocus>
+                    </div>
+                    <div class="attempts-info" style="margin-bottom: 20px; color: var(--muted-color); font-size: 14px;">
+                        {{if .AttemptsLeft}}
+                            <span>⚠️ Attempts remaining: <strong>{{.AttemptsLeft}}/5</strong></span>
+                        {{else}}
+                            <span>💡 You have 5 attempts before being temporarily blocked</span>
+                        {{end}}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large">
+                        🔓 Unlock Content
+                    </button>
+                </form>
+            </div>
+            
+            {{end}}
+        </div>
+    </div>
+    
+    {{else if .Push}}
+    <!-- Normal content flow -->
+    <div class="header">
+        <h1>� Secure Text</h1>
+    </div>
+    
+    {{if and .Push.RequireClick (not .Revealed)}}
+    <div class="click-to-reveal">
+        <div class="reveal-box">
+            <h3>🛡️ Click to Reveal Content</h3>
+            <p>This content is protected and requires you to click to view it.</p>
+            <p class="warning-text">
+                ⚠️ <strong>Note:</strong> This content will expire on {{formatTime .Push.ExpiresAt}} or after {{sub .Push.MaxViews .Push.CurrentViews}} more view(s), whichever comes first.
+            </p>
+            <form method="post" style="display: inline;">
+                {{if .CSRFToken}}
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                {{end}}
+                <input type="hidden" name="action" value="reveal">
+                <button type="submit" class="btn btn-primary btn-large">
+                    👁️ Click to Reveal the Message
+                </button>
+            </form>
+        </div>
+    </div>
+    {{else}}
+    
+    <div class="content-container">
+        <div class="content-header">
+            <h3>📝 Shared Content</h3>
+            <div class="content-actions">
+                <button onclick="copyContent()" class="btn btn-secondary">📋 Copy</button>
+                <button onclick="selectAll()" class="btn btn-secondary">📄 Select All</button>
+                {{if .Push.AutoDelete}}
+                <form method="post" style="display: inline;">
+                    {{if .CSRFToken}}
+                    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+                    {{end}}
+                    <input type="hidden" name="action" value="delete">
+                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this content? This cannot be undone.')">
+                        🗑️ Delete
+                    </button>
+                </form>
+                {{end}}
+            </div>
+        </div>
+        
+        <div class="content-box">
+            <pre id="content">{{.Text}}</pre>
+        </div>
+        
+        <div class="content-footer">
+            <small>
+                📅 Created: {{formatTime .Push.CreatedAt}} | 
+                👁️ Views: {{.Push.CurrentViews}}/{{.Push.MaxViews}}
+            </small>
+        </div>
+    </div>
+    
+    {{end}}
+    
+    <div class="actions">
+        <a href="/pwpush" class="btn btn-primary">🔒 Create New Secure Link</a>
+    </div>
+    
+    {{if eq .Push.CurrentViews .Push.MaxViews}}
+    <div class="alert alert-warning">
+        <h4>⚠️ Maximum Views Reached</h4>
+        <p>This content has reached its maximum view limit and will no longer be accessible.</p>
+    </div>
+    {{end}}
+    
+    {{else}}
+    <!-- Handle any other error cases -->
+    <div class="alert alert-error">
+        <h2>❌ Error</h2>
+        <p>Unable to access this content.</p>
+        <div class="actions">
+            <a href="/pwpush" class="btn btn-primary">🔒 Create New Secure Link</a>
+        </div>
+    </div>
+    {{end}}
+</div>
+
+<script>
+function copyContent() {
+    const content = document.getElementById('content');
+    if (content) {
+        const textArea = document.createElement('textarea');
+        textArea.value = content.textContent;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copied!';
+        btn.style.background = '#4CAF50';
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.background = '';
+        }, 2000);
+    }
+}
+
+function selectAll() {
+    const content = document.getElementById('content');
+    if (content) {
+        const range = document.createRange();
+        range.selectNodeContents(content);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+    }
+}
+
+// Auto-select content on page load for easy copying
+document.addEventListener('DOMContentLoaded', function() {
+    const content = document.getElementById('content');
+    if (content && content.textContent.trim().length < 500) {
+        // Auto-select short content
+        setTimeout(() => selectAll(), 500);
+    }
+});
+</script>
+
+</body>
+</html>

@@ -18,6 +18,7 @@ import (
 
 	"headeranalyzer/parser"
 	"headeranalyzer/passwordgenerator"
+	"headeranalyzer/pwpusher"
 	"headeranalyzer/resolver"
 
 	"github.com/getlantern/systray"
@@ -132,6 +133,12 @@ func main() {
 	dnsHandler := resolver.NewHandler(embeddedFiles)
 	passwordHandler := passwordgenerator.NewHandler(embeddedFiles)
 
+	// Initialize PWPusher with embedded files
+	pwPusher, err := pwpusher.NewHandler(embeddedFiles, "default-encryption-key-change-in-production")
+	if err != nil {
+		log.Fatalf("Failed to initialize PWPusher: %v", err)
+	}
+
 	// Use embedded static files for web assets
 	staticFS, err := fs.Sub(embeddedFiles, "web")
 	if err != nil {
@@ -162,6 +169,9 @@ func main() {
 	http.HandleFunc("/api/password", passwordgenerator.PasswordAPIHandler)
 
 	http.HandleFunc("/api/password/info", passwordgenerator.PasswordInfoAPIHandler)
+
+	// Register PWPusher routes
+	pwPusher.RegisterRoutesWithDefault()
 
 	addrPort := fmt.Sprintf("%s:%d", *addr, *port)
 	fmt.Printf("Listening on http://%s\n", addrPort)
