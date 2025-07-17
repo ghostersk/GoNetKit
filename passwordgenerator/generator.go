@@ -391,20 +391,23 @@ func generatePassphrase(config Config) (string, error) {
 		if config.PassphraseUseSpecial && len(config.SpecialChars) > 0 {
 			sepIndex, err := rand.Int(rand.Reader, big.NewInt(int64(len(config.SpecialChars))))
 			if err != nil {
-				return "-" // fallback
+				return "" // fallback to no separator
 			}
 			return string(config.SpecialChars[sepIndex.Int64()])
 		}
-		return "-"
+		return ""
 	}
 
 	// Default separator for non-random cases
-	defaultSeparator := "-"
+	defaultSeparator := ""
+	if config.PassphraseUseSpecial && len(config.SpecialChars) > 0 {
+		defaultSeparator = "-"
+	}
 
 	// Combine based on number position
 	var result string
 	if len(numbers) == 0 {
-		// No numbers, join words with random separators
+		// No numbers, join words with separators only if special chars are enabled
 		if config.PassphraseUseSpecial && len(config.SpecialChars) > 0 {
 			var parts []string
 			for i, word := range words {
@@ -415,7 +418,8 @@ func generatePassphrase(config Config) (string, error) {
 			}
 			result = strings.Join(parts, "")
 		} else {
-			result = strings.Join(words, defaultSeparator)
+			// No special characters, just concatenate words without separators
+			result = strings.Join(words, "")
 		}
 	} else {
 		switch config.NumberPosition {

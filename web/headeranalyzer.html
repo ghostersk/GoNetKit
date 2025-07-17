@@ -1,0 +1,710 @@
+{{template "base.html" .}}
+
+{{define "title"}}Email Header Analyzer{{end}}
+
+{{define "head"}}
+<script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+{{end}}
+
+{{define "content"}}
+<div class="container">
+        <h1>Email Header Analyzer</h1>
+        {{if not .From}}
+        <form method="POST">
+            <textarea name="headers" placeholder="Paste email headers here..."></textarea>
+            <br>
+            <button type="submit">Analyze Headers</button>
+        </form>
+        {{end}}
+
+        {{if .From}}
+    <div id="report" class="container">
+        <div class="section" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 30px;">
+            <div style="flex: 1 1 0; min-width: 0;">
+                <h2>Sender Identification</h2>
+                <div class="grid">
+                    <div>
+                        <p><b>Envelope Sender (Return-Path):</b> {{.EnvelopeSender}}</p>
+                        <p><b>From Domain:</b> {{.FromDomain}}</p>
+                        <p><b>Sending Server:</b> {{.SendingServer}}</p>
+                    </div>
+                    <div class="score-indicators">
+                    <span class="status {{if .SPFPass}}good{{else}}error{{end}}" title="SPF">SPF {{if .SPFPass}}✓{{else}}✗{{end}}</span>
+                    <span class="status {{if .DMARCPass}}good{{else}}error{{end}}" title="DMARC">DMARC {{if .DMARCPass}}✓{{else}}✗{{end}}</span>
+                    <span class="status {{if .DKIMPass}}good{{else}}error{{end}}" title="DKIM">DKIM {{if .DKIMPass}}✓{{else}}✗{{end}}</span>
+                    <span class="status {{if .Encrypted}}good{{else}}error{{end}}" title="Encrypted">Encrypted {{if .Encrypted}}✓{{else}}✗{{end}}</span>
+                    {{if .Blacklists}}
+                        <span class="status error" title="{{range .Blacklists}}{{.}}, {{end}}">Blacklisted {{len .Blacklists}} times</span>
+                    {{else}}
+                        <span class="status good">Not listed on major blacklists</span>
+                    {{end}}
+                    </div>
+                </div>                    
+                {{if .SenderRep}}
+                <div>
+                    <b><span>Sender Reputation: </span></b><div class="status {{if contains .SenderRep "EXCELLENT"}}good{{else if contains .SenderRep "GOOD"}}good{{else if contains .SenderRep "FAIR"}}warning{{else}}error{{end}}">
+                        {{.SenderRep}}
+                    </div>
+                </div>
+                {{end}}
+                <div class="explanation">
+                    <small>
+                        <b>Envelope Sender</b> is the real sender used for delivery (can differ from From).<br>
+                        <b>From Domain</b> is the domain shown to the recipient.<br>
+                        <b>Sending Server</b> is the host or IP that actually sent the message (from first Received header).<br>
+                        If these differ, the message may be sent on behalf of another user or via a third-party service.
+                    </small>
+                </div>
+            </div>
+        </div>
+                <details id="all-headers" class="section" style="margin-top:10px;">
+            <summary><b style="font-size: 1.5em;">All Email Headers Table</b></summary>
+            <div style="margin-bottom:10px;">
+                <input type="text" id="headerSearch" placeholder="Search headers..." style="width: 100%; max-width: 350px; padding: 5px; border-radius: 4px; border: 1px solid #444; background: #232323; color: #e0e0e0;">
+            </div>
+            <div style="overflow-x:auto;">
+            <table id="headersTable" style="width:100%; border-collapse:collapse; border:1px solid #444;">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; padding:4px 8px; border:1px solid #444; width: 180px; background:#232323;">Header Name</th>
+                        <th style="text-align:left; padding:4px 8px; border:1px solid #444; background:#232323;">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range $k, $v := .AllHeaders}}
+                    <tr>
+                        <td style="vertical-align:top; padding:4px 8px; border:1px solid #444; word-break:break-word;">{{$k}}</td>
+                        <td style="vertical-align:top; padding:4px 8px; border:1px solid #444; white-space:pre-wrap; word-break:break-word;">{{$v}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            </div>
+        </details>
+
+        <div class="section">
+            <h2>Basic Information</h2>
+            <div class="grid">
+                <div>
+                    <p><b>From:</b> {{.From}}</p>
+                    <p><b>To:</b> {{.To}}</p>
+                    <p><b>Subject:</b> {{.Subject}}</p>
+                    <p><b>Date:</b> {{.Date}}</p>
+                    {{if .ReplyTo}}<p><b>Reply-To:</b> {{.ReplyTo}}</p>{{end}}
+                </div>
+                <div>
+                    <p><b>Message-ID:</b> {{.MessageID}}</p>
+                    <p><b>Priority:</b> {{.Priority}}</p>
+                    <p><b>Content Type:</b> {{.ContentType}}</p>
+                    <p><b>Encoding:</b> {{.Encoding}}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Mail Flow</h2>
+            <ul class="mail-flow">
+                {{range .Received}}<li>{{.}}</li>{{end}}
+            </ul>
+        </div>
+
+        {{if ne .DeliveryDelay "Insufficient data for delay analysis"}}
+        <div class="section">
+            <h2>Delivery Analysis</h2>
+            <p><b>Delivery Timing:</b> {{.DeliveryDelay}}</p>
+            {{if .GeoLocation}}<p><b>Geographic Info:</b> {{.GeoLocation}}</p>{{end}}
+        </div>
+        {{end}}
+        
+        <div class="section">
+            <h2>Security Analysis</h2>
+            <div class="security-analysis-vertical">
+                <div class="section">
+                    <h3>SPF Authentication</h3>
+                    <div class="status {{if .SPFPass}}good{{else}}error{{end}}">
+                        {{if .SPFPass}}✓ Passed{{else}}✗ Failed{{end}}
+                    </div>
+                    <p>{{.SPFDetails}}</p>
+                    {{if .SPFRecord}}<pre>{{.SPFRecord}}</pre>{{end}}
+                    {{if .SPFHeader}}
+                    <details class="details"><summary>Show SPF Header</summary><pre>{{.SPFHeader}}</pre></details>
+                    {{end}}
+                </div>
+
+                <div class="section">
+                    <h3>DMARC Policy</h3>
+                    <div class="status {{if .DMARCPass}}good{{else}}error{{end}}">
+                        {{if .DMARCPass}}✓ Passed{{else}}✗ Failed{{end}}
+                    </div>
+                    <p>{{.DMARCDetails}}</p>
+                    {{if .DMARCRecord}}<pre>{{.DMARCRecord}}</pre>{{end}}
+                    {{if .DMARCHeader}}
+                    <details class="details"><summary>Show DMARC Header</summary><pre>{{.DMARCHeader}}</pre></details>
+                    {{end}}
+                </div>
+
+                <div class="section">
+                    <h3>DKIM Signature</h3>
+                    <div class="status {{if .DKIMPass}}good{{else}}error{{end}}">
+                        {{if .DKIMPass}}✓ Present{{else}}✗ Missing{{end}}
+                    </div>
+                    <p>{{.DKIMDetails}}</p>
+                    {{if .DKIM}}
+                    <details class="details"><summary>Show DKIM Header</summary><pre>{{.DKIM}}</pre></details>
+                    {{else if .DKIMHeader}}
+                    <details class="details"><summary>Show DKIM Header</summary><pre>{{.DKIMHeader}}</pre></details>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Encryption</h2>
+            <div class="status {{if .Encrypted}}good{{else}}error{{end}}">
+                {{if .Encrypted}}Encrypted (TLS){{else}}Not Encrypted{{end}}
+            </div>
+            <details><summary>Show Encryption Details</summary><pre>{{.EncryptionDetail}}</pre></details>
+        </div>
+
+        {{if .Warnings}}
+        <div class="section">
+            <h2>Warnings</h2>
+            <ul>
+                {{range .Warnings}}<li class="status warning">⚠️ {{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+        {{if .SecurityFlags}}
+        <div class="section">
+            <h2>Security Flags</h2>
+            <ul>
+                {{range .SecurityFlags}}<li class="status">🔒 {{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+        {{if .Blacklists}}
+        <div class="section">
+            <h2>Blacklist Status</h2>
+            <div style="margin-bottom: 6px;">
+                <b>Checked:</b>
+                {{if .SendingServer}}IP {{.SendingServer}}{{else if .FromDomain}}Domain {{.FromDomain}}{{end}}
+            </div>
+            <div class="status error">⚠️ Listed on the following blacklists:</div>
+            <ul>
+                {{range .Blacklists}}<li>{{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+
+        {{if .SpamFlags}}
+        <div class="section">
+            <h2>Spam Analysis</h2>
+            <div class="status {{if gt (len .SpamFlags) 0}}warning{{else}}good{{end}}">
+                {{if gt (len .SpamFlags) 0}}⚠️ Spam Indicators Found{{else}}✓ No Spam Indicators{{end}}
+            </div>
+            {{if .SpamScore}}<p><b>Spam Score:</b> {{.SpamScore}}</p>{{end}}
+            {{if .SpamFlags}}
+            <ul>
+                {{range .SpamFlags}}<li>{{.}}</li>{{end}}
+            </ul>
+            {{end}}
+        </div>
+        {{end}}
+
+        {{if ne .VirusInfo "No virus scanning information found"}}
+        <div class="section">
+            <h2>Virus Scanning</h2>
+            <div class="status good">🛡️ Virus Scanning Information</div>
+            <p>{{.VirusInfo}}</p>
+        </div>
+        {{end}}
+
+        {{if .PhishingRisk}}
+        <div class="section">
+            <h2>Security Risk Assessment</h2>
+            <div class="security-analysis-vertical">
+                <div class="section">
+                    <h3>Phishing Risk</h3>
+                    <div class="status {{if eq (index (splitString .PhishingRisk " ") 0) "HIGH"}}error{{else if eq (index (splitString .PhishingRisk " ") 0) "MEDIUM"}}warning{{else}}good{{end}}">
+                        {{.PhishingRisk}}
+                    </div>
+                </div>
+                <div class="section">
+                    <h3>Spoofing Risk</h3>
+                    <div class="status {{if contains .SpoofingRisk "POTENTIAL"}}warning{{else}}good{{end}}">
+                        {{.SpoofingRisk}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{end}}
+
+        {{if .ListInfo}}
+        <div class="section">
+            <h2>Mailing List Information</h2>
+            <ul>
+                {{range .ListInfo}}<li>{{.}}</li>{{end}}
+            </ul>
+            {{if .AutoReply}}<p class="status">📧 Auto-reply message detected</p>{{end}}
+            {{if .BulkEmail}}<p class="status">📬 Bulk/marketing email detected</p>{{end}}
+        </div>
+        {{end}}
+
+        {{if .Compliance}}
+        <div class="section">
+            <h2>Compliance Information</h2>
+            <ul>
+                {{range .Compliance}}<li class="status good">✓ {{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+        {{if .ARC}}
+        <div class="section">
+            <h2>ARC (Authenticated Received Chain)</h2>
+            <details><summary>Show ARC Headers</summary>
+            <ul>
+                {{range .ARC}}<li><pre>{{.}}</pre></li>{{end}}
+            </ul>
+            </details>
+        </div>
+        {{end}}
+
+        {{if ne .BIMI "No BIMI record found"}}
+        <div class="section">
+            <h2>Brand Indicators (BIMI)</h2>
+            <p>{{.BIMI}}</p>
+        </div>
+        {{end}}
+
+        {{if .Attachments}}
+        <div class="section">
+            <h2>Attachment Information</h2>
+            <ul>
+                {{range .Attachments}}<li>{{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+        {{if .URLs}}
+        <div class="section">
+            <h2>URL Information</h2>
+            <ul>
+                {{range .URLs}}<li>{{.}}</li>{{end}}
+            </ul>
+        </div>
+        {{end}}
+
+        {{if ne .ThreadInfo "No threading information available"}}
+        <div class="section">
+            <h2>Message Threading</h2>
+            <details><summary>Show Threading Information</summary>
+            <pre>{{.ThreadInfo}}</pre>
+            </details>
+        </div>
+        {{end}}
+
+
+        <div class="section">
+            <button onclick="exportPDF()" type="button">Export as PDF</button>
+            <button onclick="exportImage()" type="button">Save as Image</button>
+            <button onclick="printReport()" type="button">Print Report</button>
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+    // Check if required libraries are loaded
+    function checkLibraries() {
+        if (typeof html2canvas === 'undefined') {
+            console.warn('html2canvas library not loaded');
+            return false;
+        }
+        const hasHtml2pdf = typeof html2pdf !== 'undefined';
+        const hasJsPDF = typeof window.jsPDF !== 'undefined';
+        
+        if (!hasHtml2pdf && !hasJsPDF) {
+            console.warn('Neither html2pdf nor jsPDF library loaded');
+            return false;
+        }
+        
+        if (hasHtml2pdf) {
+            console.log('Using html2pdf for PDF generation');
+        } else if (hasJsPDF) {
+            console.log('Using jsPDF fallback for PDF generation');
+        }
+        
+        return true;
+    }
+
+    // Template helper functions for the enhanced features
+    function splitString(str, delimiter) {
+        return str.split(delimiter);
+    }
+    
+    function contains(str, substr) {
+        return str.includes(substr);
+    }
+
+    function exportImage() {
+        if (typeof html2canvas === 'undefined') {
+            alert('Image export library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        html2canvas(document.querySelector("#report")).then(canvas => {
+            let link = document.createElement("a");
+            link.download = "email-analysis.png";
+            link.href = canvas.toDataURL();
+            link.click();
+        }).catch(error => {
+            console.error('Image export failed:', error);
+            alert('Failed to export image. Please try again.');
+        });
+    }
+
+    function printReport() {
+        // Store original states
+        const originalDetailsStates = {};
+        document.querySelectorAll('#report details').forEach((detail, index) => {
+            originalDetailsStates[index] = detail.open;
+        });
+        
+        // Expand details for printing (except ARC)
+        document.querySelectorAll('#report details').forEach(detail => {
+            const summary = detail.querySelector('summary');
+            if (summary && !summary.textContent.includes('Show ARC Headers')) {
+                detail.open = true;
+            }
+        });
+        
+        // Open print dialog
+        window.print();
+        
+        // Restore original states after a short delay
+        setTimeout(() => {
+            document.querySelectorAll('#report details').forEach((detail, index) => {
+                detail.open = originalDetailsStates[index] || false;
+            });
+        }, 1000);
+    }
+
+    function exportPDF() {
+        // Check if libraries are available
+        if (typeof html2canvas === 'undefined') {
+            alert('HTML2Canvas library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        // Check if we have either html2pdf or jsPDF available
+        const hasHtml2pdf = typeof html2pdf !== 'undefined';
+        const hasJsPDF = typeof window.jsPDF !== 'undefined';
+        
+        if (!hasHtml2pdf && !hasJsPDF) {
+            alert('PDF generation library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        // Store original states
+        const originalDetailsStates = {};
+        document.querySelectorAll('#report details').forEach((detail, index) => {
+            originalDetailsStates[index] = detail.open;
+        });
+        
+        // Expand only specific details that should be included in PDF (not ARC)
+        document.querySelectorAll('#report details').forEach(detail => {
+            const summary = detail.querySelector('summary');
+            if (summary && !summary.textContent.includes('Show ARC Headers')) {
+                detail.open = true;
+            }
+        });
+        
+        // Make sure all-headers is expanded
+        const allHeaders = document.getElementById('all-headers');
+        if (allHeaders) {
+            allHeaders.open = true;
+        }
+        
+        const element = document.getElementById('report');
+        if (!element) {
+            alert('Report element not found. Please ensure the analysis is complete.');
+            return;
+        }
+        
+        // Add temporary styling for PDF export
+        const tempStyle = document.createElement('style');
+        tempStyle.id = 'temp-pdf-style';
+        tempStyle.innerHTML = `
+            body {
+                max-width: none !important;
+                width: 794px !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                color: black !important;
+            }
+            .container {
+                max-width: none !important;
+                width: 794px !important;
+                padding: 15px !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+            }
+            #report {
+                max-width: none !important;
+                width: 100% !important;
+                padding: 10px !important;
+                margin: 0 !important;
+                background: white !important;
+                color: black !important;
+                box-sizing: border-box !important;
+                position: relative !important;
+                left: 0 !important;
+                top: 0 !important;
+            }
+            #report * {
+                background: white !important;
+                color: black !important;
+                max-width: none !important;
+            }
+            #report .section {
+                width: 100% !important;
+                max-width: none !important;
+                background: white !important;
+                border: 1px solid #ccc !important;
+                margin-bottom: 10px !important;
+                padding: 10px !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+            }
+            #report .grid {
+                display: block !important;
+                width: 100% !important;
+            }
+            #report .grid > div {
+                display: block !important;
+                width: 100% !important;
+                margin-bottom: 10px !important;
+            }
+            #report .grid p {
+                margin: 5px 0 !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+            #report pre {
+                background: #f5f5f5 !important;
+                color: black !important;
+                border: 1px solid #ccc !important;
+                padding: 5px !important;
+                width: 100% !important;
+                max-width: none !important;
+                box-sizing: border-box !important;
+                white-space: pre-wrap !important;
+                word-break: break-word !important;
+                page-break-inside: avoid !important;
+            }
+            #report table {
+                width: 100% !important;
+                max-width: none !important;
+                border-collapse: collapse !important;
+                table-layout: fixed !important;
+                page-break-inside: avoid !important;
+            }
+            #report td, #report th {
+                border: 1px solid #333 !important;
+                background: white !important;
+                color: black !important;
+                padding: 4px !important;
+                word-wrap: break-word !important;
+                word-break: break-word !important;
+                overflow-wrap: break-word !important;
+            }
+            #report .status {
+                background: #f0f0f0 !important;
+                color: black !important;
+                border: 1px solid #999 !important;
+                display: inline-block !important;
+                padding: 2px 5px !important;
+            }
+            #report .status.good {
+                background: #e8f5e8 !important;
+            }
+            #report .status.warning {
+                background: #fff3cd !important;
+            }
+            #report .status.error {
+                background: #f8d7da !important;
+            }
+            #report details {
+                margin-bottom: 10px !important;
+                page-break-inside: avoid !important;
+            }
+            /* Hide buttons */
+            button {
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(tempStyle);
+        
+        // Force the element to have A4 dimensions
+        const originalWidth = element.style.width;
+        const originalMaxWidth = element.style.maxWidth;
+        
+        element.style.width = '794px'; // A4 width in pixels
+        element.style.maxWidth = 'none';
+        
+        // Store these for restoration
+        const restoreWidth = () => {
+            element.style.width = originalWidth;
+            element.style.maxWidth = originalMaxWidth;
+        };
+        
+        // Show loading message
+        const button = document.querySelector('button[onclick="exportPDF()"]');
+        const originalText = button ? button.textContent : '';
+        if (button) button.textContent = 'Generating PDF...';
+        
+        // Wait a moment for styles to be applied
+        setTimeout(() => {
+            performPDFExport();
+        }, 100);
+        
+        function performPDFExport() {
+        try {
+            if (hasHtml2pdf) {
+                // Use html2pdf if available
+                const opt = {
+                    margin: [5, 5, 5, 5], // Smaller margins in mm
+                    filename: 'email-header-analysis.pdf',
+                    image: { type: 'jpeg', quality: 0.95 },
+                    html2canvas: { 
+                        scale: 2,
+                        useCORS: true,
+                        allowTaint: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        x: 0,
+                        y: 0,
+                        width: 794, // A4 width in pixels at 96 DPI (210mm)
+                        height: element.scrollHeight,
+                        backgroundColor: '#ffffff',
+                        windowWidth: 794, // A4 width at 96 DPI
+                        windowHeight: 1123 // A4 height at 96 DPI
+                    },
+                    jsPDF: { 
+                        unit: 'mm', 
+                        format: 'a4', 
+                        orientation: 'portrait',
+                        compress: true
+                    }
+                };
+                
+                html2pdf().set(opt).from(element).save().then(() => {
+                    restoreOriginalState();
+                }).catch((error) => {
+                    console.error('PDF generation failed:', error);
+                    alert('Failed to generate PDF. Please try again.');
+                    restoreOriginalState();
+                });
+            } else if (hasJsPDF) {
+                // Fallback to direct jsPDF + html2canvas approach
+                html2canvas(element, {
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    x: 0,
+                    y: 0,
+                    width: 794, // A4 width in pixels at 96 DPI (210mm)
+                    height: element.scrollHeight,
+                    backgroundColor: '#ffffff',
+                    windowWidth: 794, // A4 width at 96 DPI
+                    windowHeight: 1123 // A4 height at 96 DPI
+                }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    const pdf = new window.jsPDF.jsPDF('p', 'mm', 'a4');
+                    
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+                    
+                    // Use full width with minimal margins
+                    const imgWidth = pdfWidth - 10; // 5mm margin on each side
+                    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                    
+                    let heightLeft = imgHeight;
+                    let position = 5; // 5mm top margin
+                    
+                    pdf.addImage(imgData, 'JPEG', 5, position, imgWidth, imgHeight);
+                    heightLeft -= (pdfHeight - 10); // Account for margins
+                    
+                    while (heightLeft >= 0) {
+                        position = heightLeft - imgHeight + 5;
+                        pdf.addPage();
+                        pdf.addImage(imgData, 'JPEG', 5, position, imgWidth, imgHeight);
+                        heightLeft -= (pdfHeight - 10);
+                    }
+                    
+                    pdf.save('email-header-analysis.pdf');
+                    restoreOriginalState();
+                }).catch(error => {
+                    console.error('Canvas generation failed:', error);
+                    alert('Failed to generate PDF. Please try again.');
+                    restoreOriginalState();
+                });
+            }
+        } catch (error) {
+            console.error('PDF export error:', error);
+            alert('PDF export failed. Please refresh the page and try again.');
+            restoreOriginalState();
+        }
+        
+        function restoreOriginalState() {
+            document.querySelectorAll('#report details').forEach((detail, index) => {
+                detail.open = originalDetailsStates[index] || false;
+            });
+            // Remove temporary PDF styling
+            const tempStyle = document.getElementById('temp-pdf-style');
+            if (tempStyle) {
+                document.head.removeChild(tempStyle);
+            }
+            // Restore element width if restoreWidth function exists
+            if (typeof restoreWidth === 'function') {
+                restoreWidth();
+            }
+            if (button) button.textContent = originalText;
+        }
+        } // End of performPDFExport function
+    }
+
+    // Header table search
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if libraries are loaded
+        setTimeout(() => {
+            if (!checkLibraries()) {
+                console.warn('Some export libraries failed to load. PDF/Image export may not work.');
+            }
+        }, 1000);
+        
+        var search = document.getElementById('headerSearch');
+        if (search) {
+            search.addEventListener('input', function() {
+                var filter = search.value.toLowerCase();
+                var rows = document.querySelectorAll('#headersTable tbody tr');
+                rows.forEach(function(row) {
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.indexOf(filter) > -1 ? '' : 'none';
+                });
+            });
+        }
+    });
+</script>
+{{end}}

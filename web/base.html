@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}HeaderAnalyzer{{end}}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    {{block "head" .}}{{end}}
+</head>
+<body>
+    <nav>
+        <a href="/" {{if eq .CurrentPage "home"}}class="active"{{end}}>Analyze New Header</a>
+        <a href="/dns" {{if eq .CurrentPage "dns"}}class="active"{{end}}>DNS Tools</a>
+        <a href="/password" {{if eq .CurrentPage "password"}}class="active"{{end}}>Password Generator</a>
+    </nav>
+    
+    <main>
+        {{block "content" .}}
+        <div class="container">
+            <h1>HeaderAnalyzer</h1>
+            <p>Welcome to HeaderAnalyzer - your tool for email header analysis, DNS tools, and password generation.</p>
+        </div>
+        {{end}}
+    </main>
+    
+    {{block "scripts" .}}{{end}}
+</body>
+</html>

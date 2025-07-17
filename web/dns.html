@@ -1,26 +1,21 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>DNS Tools</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        .dns-tools-container { max-width: 900px; margin: 0 auto; }
-        .dns-query-form { display: flex; gap: 10px; margin-bottom: 10px; }
-        .dns-query-form input, .dns-query-form select { padding: 7px; border-radius: 4px; border: 1px solid #444; background: #232323; color: #e0e0e0; }
-        .dns-query-form button { padding: 7px 16px; }
-        .dns-results { margin-top: 10px; }
-        .dns-result-block { background: #232323; border-radius: 6px; margin-bottom: 12px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.12); }
-        .dns-result-block pre { white-space: pre-wrap; word-break: break-word; font-size: 1em; }
-        .save-btns { margin-bottom: 10px; }
-    </style>
-</head>
-<body>
-<nav>
-    <a href="/">Analyze New Header</a>
-    <a href="/dns">DNS Tools</a>
-    <a href="/password">Password Generator</a>
-</nav>
+{{template "base.html" .}}
+
+{{define "title"}}DNS Tools - HeaderAnalyzer{{end}}
+
+{{define "head"}}
+<style>
+    .dns-tools-container { max-width: 900px; margin: 0 auto; }
+    .dns-query-form { display: flex; gap: 10px; margin-bottom: 10px; }
+    .dns-query-form input, .dns-query-form select { padding: 7px; border-radius: 4px; border: 1px solid #444; background: #232323; color: #e0e0e0; }
+    .dns-query-form button { padding: 7px 16px; }
+    .dns-results { margin-top: 10px; }
+    .dns-result-block { background: #232323; border-radius: 6px; margin-bottom: 12px; padding: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.12); }
+    .dns-result-block pre { white-space: pre-wrap; word-break: break-word; font-size: 1em; }
+    .save-btns { margin-bottom: 10px; }
+</style>
+{{end}}
+
+{{define "content"}}
 <div class="dns-tools-container">
     <h1>DNS Tools</h1>
     <form class="dns-query-form" id="dnsForm" onsubmit="return false;">
@@ -48,45 +43,102 @@
     </div>
     <div class="dns-results" id="dnsResults"></div>
 </div>
+{{end}}
+
+{{define "scripts"}}
 <script>
 let results = [];
 
-function renderResults() {
-    const container = document.getElementById('dnsResults');
-    container.innerHTML = '';
-    results.forEach(r => {
-        const block = document.createElement('div');
-        block.className = 'dns-result-block';
-        block.innerHTML = `<b>${r.type} for ${r.query}</b><br><pre>${r.result}</pre>`;
-        container.appendChild(block);
-    });
-}
-
-document.getElementById('dnsForm').addEventListener('submit', async function() {
+document.getElementById('dnsForm').addEventListener('submit', function() {
     const query = document.getElementById('dnsInput').value.trim();
     const type = document.getElementById('dnsType').value;
+    const server = document.getElementById('dnsServer').value.trim();
+    
+    if (!query) return;
+    
     let url = `/api/dns?query=${encodeURIComponent(query)}&type=${encodeURIComponent(type)}`;
-    const dnsServer = document.getElementById('dnsServer').value.trim();
-    if (dnsServer) url += `&server=${encodeURIComponent(dnsServer)}`;
-    let res = await fetch(url);
-    let data = await res.text();
-    results.unshift({query, type, result: data});
-    renderResults();
+    if (server) {
+        url += `&server=${encodeURIComponent(server)}`;
+    }
+    
+    // Add selector field for DKIM queries
+    if (type === 'DKIM' && !query.includes(':')) {
+        const selector = prompt('Enter DKIM selector (e.g., "selector1", "default"):');
+        if (selector) {
+            url = `/api/dns?query=${encodeURIComponent(query + ':' + selector)}&type=${encodeURIComponent(type)}`;
+            if (server) {
+                url += `&server=${encodeURIComponent(server)}`;
+            }
+        }
+    }
+    
+    fetch(url)
+        .then(response => response.text())
+        .then(data => {
+            const timestamp = new Date().toLocaleString();
+            const result = {
+                timestamp: timestamp,
+                query: query,
+                type: type,
+                server: server || 'Default',
+                result: data
+            };
+            results.push(result);
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'dns-result-block';
+            resultDiv.innerHTML = `
+                <h3>${type} query for ${query}</h3>
+                <p><small>Time: ${timestamp} | Server: ${server || 'Default'}</small></p>
+                <pre>${data}</pre>
+            `;
+            document.getElementById('dnsResults').appendChild(resultDiv);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'dns-result-block';
+            resultDiv.innerHTML = `
+                <h3>Error querying ${query}</h3>
+                <pre>Error: ${error.message}</pre>
+            `;
+            document.getElementById('dnsResults').appendChild(resultDiv);
+        });
 });
 
 function saveResults(format) {
-    let content = '';
-    if (format === 'csv') {
-        content = 'Type,Query,Result\n' + results.map(r => `${r.type},${r.query},"${r.result.replace(/"/g, '""')}"`).join('\n');
-    } else {
-        content = results.map(r => `${r.type} for ${r.query}\n${r.result}\n`).join('\n');
+    if (results.length === 0) {
+        alert('No results to save');
+        return;
     }
-    const blob = new Blob([content], {type: 'text/plain'});
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `dnswhois_results.${format}`;
-    link.click();
+    
+    let content = '';
+    let filename = '';
+    
+    if (format === 'csv') {
+        content = 'Timestamp,Query,Type,Server,Result\n';
+        results.forEach(r => {
+            const escapedResult = '"' + r.result.replace(/"/g, '""') + '"';
+            content += `"${r.timestamp}","${r.query}","${r.type}","${r.server}",${escapedResult}\n`;
+        });
+        filename = 'dns-results.csv';
+    } else if (format === 'txt') {
+        results.forEach(r => {
+            content += `=== ${r.type} query for ${r.query} ===\n`;
+            content += `Time: ${r.timestamp}\n`;
+            content += `Server: ${r.server}\n`;
+            content += `Result:\n${r.result}\n\n`;
+        });
+        filename = 'dns-results.txt';
+    }
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 </script>
-</body>
-</html>
+{{end}}
