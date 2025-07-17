@@ -106,13 +106,13 @@ var defaultEncryptionKey = "your-secret-32-char-encryption-key!!"
 
 // Security constants
 const (
-	MaxTextLength     = 100000  // 100KB max text
-	MaxPasswordLength = 128     // Max password length
-	MinPasswordLength = 1       // Min password length
-	MaxExpiryDays     = 90      // Max 90 days
-	MinExpiryDays     = 1       // Min 1 day
-	MaxViews          = 100     // Max 100 views
-	MinViews          = 1       // Min 1 view
+	MaxTextLength     = 100000        // 100KB max text
+	MaxPasswordLength = 128           // Max password length
+	MinPasswordLength = 1             // Min password length
+	MaxExpiryDays     = 90            // Max 90 days
+	MinExpiryDays     = 1             // Min 1 day
+	MaxViews          = 100           // Max 100 views
+	MinViews          = 1             // Min 1 view
 	CSRFTokenExpiry   = 1 * time.Hour // CSRF tokens expire after 1 hour
 )
 
@@ -444,7 +444,7 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 		// Limit request body size
 		r.Body = http.MaxBytesReader(w, r.Body, MaxTextLength+1024) // Text + some overhead for JSON
-		
+
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
@@ -452,33 +452,33 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	} else {
 		// Handle form data - limit request size
 		r.Body = http.MaxBytesReader(w, r.Body, MaxTextLength+1024)
-		
+
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "Invalid form data", http.StatusBadRequest)
 			return
 		}
-		
+
 		// Validate CSRF token for form submissions
 		csrfToken := r.FormValue("csrf_token")
 		if !p.validateCSRFToken(csrfToken) {
 			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
 			return
 		}
-		
+
 		// Parse and sanitize form values
 		req.Text = r.FormValue("text")
-		
+
 		var err error
 		req.ExpiryDays, err = strconv.Atoi(r.FormValue("expiry_days"))
 		if err != nil {
 			req.ExpiryDays = 7 // Default
 		}
-		
+
 		req.MaxViews, err = strconv.Atoi(r.FormValue("max_views"))
 		if err != nil {
 			req.MaxViews = 10 // Default
 		}
-		
+
 		req.RequireClick = r.FormValue("require_click") == "on"
 		req.AutoDelete = r.FormValue("auto_delete") == "on"
 		req.TrackHistory = r.FormValue("track_history") == "on"
@@ -602,14 +602,14 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 	// Handle POST requests (reveal actions and password verification)
 	if r.Method == http.MethodPost {
 		r.ParseForm()
-		
+
 		// Validate CSRF token for form submissions
 		csrfToken := r.FormValue("csrf_token")
 		if !p.validateCSRFToken(csrfToken) {
 			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
 			return
 		}
-		
+
 		action := r.FormValue("action")
 
 		if action == "reveal" {
