@@ -4,12 +4,18 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
+	"time"
+
+	"headeranalyzer/security"
 )
 
 type Handler struct {
 	templates *template.Template
+	csrf      *security.CSRFManager
+	validator *security.InputValidator
 }
 
 type PasswordConfig struct {
@@ -57,10 +63,19 @@ func NewHandler(embeddedFiles embed.FS) *Handler {
 
 	return &Handler{
 		templates: tmpl,
+		csrf:      security.NewCSRFManager(time.Hour),
+		validator: security.NewInputValidator(),
 	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Generate CSRF token
+	csrfToken, err := h.csrf.GenerateToken()
+	if err != nil {
+		http.Redirect(w, r, "/password?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
+		return
+	}
+
 	// Parse URL parameters to set default values
 	config := PasswordConfig{
 		Type:           getStringParam(r, "type", "passphrase"),
@@ -80,9 +95,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	data := struct {
 		CurrentPage string
 		Config      PasswordConfig
+		CSRFToken   string
 	}{
 		CurrentPage: "password",
 		Config:      config,
+		CSRFToken:   csrfToken,
 	}
 	h.templates.ExecuteTemplate(w, "password.html", data)
 }

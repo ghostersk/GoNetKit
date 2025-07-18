@@ -3,7 +3,11 @@ package passwordgenerator
 import (
 	"encoding/json"
 	"net/http"
+
+	"headeranalyzer/security"
 )
+
+var validator = security.NewInputValidator()
 
 // PasswordAPIHandler handles password generation requests
 func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -31,6 +35,45 @@ func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Invalid JSON"))
 		return
 	}
+
+	// Validate input parameters
+	if requestData.Length < 4 || requestData.Length > 128 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Length must be between 4 and 128"))
+		return
+	}
+
+	if requestData.NumberCount < 0 || requestData.NumberCount > 20 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Number count must be between 0 and 20"))
+		return
+	}
+
+	if requestData.WordCount < 2 || requestData.WordCount > 10 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Word count must be between 2 and 10"))
+		return
+	}
+
+	if len(requestData.SpecialChars) > 50 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Special characters string too long"))
+		return
+	}
+
+	// Validate type parameter
+	if requestData.Type != "random" && requestData.Type != "passphrase" {
+		requestData.Type = "passphrase" // Default to passphrase
+	}
+
+	// Validate number position
+	validPositions := map[string]bool{"start": true, "end": true, "each": true}
+	if !validPositions[requestData.NumberPosition] {
+		requestData.NumberPosition = "end" // Default
+	}
+
+	// Sanitize special characters to prevent potential issues
+	requestData.SpecialChars = validator.SanitizeHTML(requestData.SpecialChars)
 
 	// Convert to internal Config format
 	config := Config{

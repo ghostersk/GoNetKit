@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html"
 	"html/template"
 	"io"
 	"io/fs"
@@ -17,11 +16,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
+
+	"headeranalyzer/security"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -33,7 +32,8 @@ type PWPusher struct {
 	pushTemplates  *template.Template
 	viewTemplates  *template.Template
 	failedAttempts map[string]*FailedAttempts
-	csrfTokens     map[string]time.Time // Map of CSRF tokens to their creation time
+	csrf           *security.CSRFManager
+	validator      *security.InputValidator
 }
 
 type FailedAttempts struct {
@@ -115,12 +115,6 @@ const (
 	CSRFTokenExpiry   = 1 * time.Hour // CSRF tokens expire after 1 hour
 )
 
-// Input validation patterns
-var (
-	allowedActionPattern = regexp.MustCompile(`^(reveal|verify_password|delete)$`)
-	safeStringPattern    = regexp.MustCompile(`^[\p{L}\p{N}\p{P}\p{Z}\p{S}\s]*$`)
-)
-
 // NewPWPusher creates a new PWPusher instance
 func NewPWPusher(embeddedFS fs.FS, encryptionKey string) (*PWPusher, error) {
 	if encryptionKey == "" {
@@ -156,7 +150,8 @@ func NewPWPusher(embeddedFS fs.FS, encryptionKey string) (*PWPusher, error) {
 		pushTemplates:  pushTemplates,
 		viewTemplates:  viewTemplates,
 		failedAttempts: make(map[string]*FailedAttempts),
-		csrfTokens:     make(map[string]time.Time),
+		csrf:           security.NewCSRFManager(CSRFTokenExpiry),
+		validator:      security.NewInputValidator(),
 	}, nil
 }
 
@@ -470,29 +465,7 @@ func (p *PWPusher) getBlockedUntil(clientIP string) time.Time {
 	return time.Time{}
 }
 
-func (p *PWPusher) getClientIP(r *http.Request) string {
-	// Check X-Forwarded-For header for real IP behind proxy
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		// Get the first IP in the list
-		ips := strings.Split(forwarded, ",")
-		clientIP := strings.TrimSpace(ips[0])
-		log.Printf("Using X-Forwarded-For IP: %s", clientIP)
-		return clientIP
-	}
-
-	// Check X-Real-IP header
-	realIP := r.Header.Get("X-Real-IP")
-	if realIP != "" {
-		log.Printf("Using X-Real-IP: %s", realIP)
-		return realIP
-	}
-
-	// Fall back to remote address
-	clientIP := strings.Split(r.RemoteAddr, ":")[0]
-	log.Printf("Using RemoteAddr IP: %s", clientIP)
-	return clientIP
-} // HTTP Handlers
+// HTTP Handlers
 
 func (p *PWPusher) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	log.Printf("PWPusher IndexHandler called: %s %s", r.Method, r.URL.Path)
@@ -574,24 +547,24 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Comprehensive input validation
-	sanitizedText, err := p.validateAndSanitizeText(req.Text)
+	sanitizedText, err := p.validator.ValidateAndSanitizeText(req.Text, 100000)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	req.Text = sanitizedText
 
-	if err := p.validatePassword(req.Password); err != nil {
+	if err := p.validator.ValidatePassword(req.Password); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := p.validateInteger(req.ExpiryDays, MinExpiryDays, MaxExpiryDays, "expiry days"); err != nil {
+	if err := p.validator.ValidateIntRange(req.ExpiryDays, MinExpiryDays, MaxExpiryDays, "expiry days"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := p.validateInteger(req.MaxViews, MinViews, MaxViews, "max views"); err != nil {
+	if err := p.validator.ValidateIntRange(req.MaxViews, MinViews, MaxViews, "max views"); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -611,7 +584,7 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	id := p.generateID()
 	now := time.Now()
 	expiresAt := now.AddDate(0, 0, req.ExpiryDays)
-	creatorIP := p.getClientIP(r)
+	creatorIP := p.validator.GetClientIP(r)
 
 	// Hash password if provided
 	var passwordHash sql.NullString
@@ -794,7 +767,7 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if action == "verify_password" {
 			// Handle password verification with rate limiting
-			clientIP := p.getClientIP(r)
+			clientIP := p.validator.GetClientIP(r)
 			log.Printf("Password verification attempt from IP: %s", clientIP)
 
 			// Check if client is blocked
@@ -937,7 +910,7 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if password is required and not yet verified
 	if push.PasswordHash != "" {
-		clientIP := p.getClientIP(r)
+		clientIP := p.validator.GetClientIP(r)
 
 		// Check if client is blocked
 		if p.isBlocked(clientIP) {
@@ -1089,112 +1062,13 @@ func (p *PWPusher) StatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Input validation and sanitization functions
-func (p *PWPusher) validateAndSanitizeText(text string) (string, error) {
-	if text == "" {
-		return "", fmt.Errorf("text cannot be empty")
-	}
-
-	if len(text) > MaxTextLength {
-		return "", fmt.Errorf("text too long (max %d characters)", MaxTextLength)
-	}
-
-	if !utf8.ValidString(text) {
-		return "", fmt.Errorf("text contains invalid UTF-8 characters")
-	}
-
-	// Store the original text without HTML escaping
-	// The template will handle safe display
-	return text, nil
-}
-
-func (p *PWPusher) validatePassword(password string) error {
-	if len(password) > MaxPasswordLength {
-		return fmt.Errorf("password too long (max %d characters)", MaxPasswordLength)
-	}
-
-	if len(password) > 0 && len(password) < MinPasswordLength {
-		return fmt.Errorf("password too short (min %d characters)", MinPasswordLength)
-	}
-
-	if !utf8.ValidString(password) {
-		return fmt.Errorf("password contains invalid UTF-8 characters")
-	}
-
-	return nil
-}
-
-func (p *PWPusher) validateInteger(value, min, max int, fieldName string) error {
-	if value < min || value > max {
-		return fmt.Errorf("%s must be between %d and %d", fieldName, min, max)
-	}
-	return nil
-}
-
-func (p *PWPusher) validateAction(action string) error {
-	if !allowedActionPattern.MatchString(action) {
-		return fmt.Errorf("invalid action")
-	}
-	return nil
-}
-
-func (p *PWPusher) sanitizeString(input string) string {
-	// Remove any potentially dangerous characters and HTML escape
-	sanitized := html.EscapeString(strings.TrimSpace(input))
-
-	// Limit length
-	if len(sanitized) > 1000 {
-		sanitized = sanitized[:1000]
-	}
-
-	return sanitized
-}
-
 // CSRF token management
 func (p *PWPusher) generateCSRFToken() (string, error) {
-	bytes := make([]byte, 32)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return "", err
-	}
-
-	token := base64.URLEncoding.EncodeToString(bytes)
-	p.csrfTokens[token] = time.Now()
-
-	// Clean up expired tokens
-	p.cleanupExpiredCSRFTokens()
-
-	return token, nil
+	return p.csrf.GenerateToken()
 }
 
 func (p *PWPusher) validateCSRFToken(token string) bool {
-	if token == "" {
-		return false
-	}
-
-	createdAt, exists := p.csrfTokens[token]
-	if !exists {
-		return false
-	}
-
-	// Check if token has expired
-	if time.Since(createdAt) > CSRFTokenExpiry {
-		delete(p.csrfTokens, token)
-		return false
-	}
-
-	// Remove token after use (one-time use)
-	delete(p.csrfTokens, token)
-	return true
-}
-
-func (p *PWPusher) cleanupExpiredCSRFTokens() {
-	now := time.Now()
-	for token, createdAt := range p.csrfTokens {
-		if now.Sub(createdAt) > CSRFTokenExpiry {
-			delete(p.csrfTokens, token)
-		}
-	}
+	return p.csrf.ValidateToken(token)
 }
 
 // Add CSRF token to ViewData
@@ -1310,16 +1184,6 @@ func (p *PWPusher) setHistoryCookies(w http.ResponseWriter, history []map[string
 		MaxAge:   30 * 24 * 60 * 60, // 30 days
 		HttpOnly: false,             // Allow JavaScript access
 		Secure:   false,             // Allow HTTP for development
-	})
-}
-
-func (p *PWPusher) clearHistoryCookies(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "pwpush_history",
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
 	})
 }
 

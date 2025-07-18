@@ -13,7 +13,8 @@
         <h1>Email Header Analyzer</h1>
         {{if not .From}}
         <form method="POST">
-            <textarea name="headers" placeholder="Paste email headers here..."></textarea>
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <textarea name="headers" placeholder="Paste email headers here..." required></textarea>
             <br>
             <button type="submit">Analyze Headers</button>
         </form>

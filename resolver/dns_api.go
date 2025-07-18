@@ -7,32 +7,68 @@ import (
 	"net/http"
 	"strings"
 
+	"headeranalyzer/security"
+
 	"github.com/miekg/dns"
 )
 
+var validator = security.NewInputValidator()
+
 // DNSAPIHandler handles DNS lookup requests
 func DNSAPIHandler(w http.ResponseWriter, r *http.Request) {
+	// Validate and sanitize query parameter
 	query := r.URL.Query().Get("query")
-	typeq := r.URL.Query().Get("type")
-	if query == "" || typeq == "" {
+	validatedQuery, err := validator.ValidateDNSQuery(query)
+	if err != nil {
 		w.WriteHeader(400)
-		w.Write([]byte("Missing query or type"))
+		w.Write([]byte("Invalid query: " + err.Error()))
 		return
 	}
+
+	// Validate type parameter
+	typeq := r.URL.Query().Get("type")
+	if typeq == "" {
+		w.WriteHeader(400)
+		w.Write([]byte("Missing type parameter"))
+		return
+	}
+
+	// Validate allowed DNS types
+	allowedTypes := map[string]bool{
+		"A": true, "AAAA": true, "MX": true, "TXT": true, "NS": true,
+		"CNAME": true, "PTR": true, "SOA": true, "SPF": true,
+		"DKIM": true, "DMARC": true, "WHOIS": true,
+	}
+	if !allowedTypes[typeq] {
+		w.WriteHeader(400)
+		w.Write([]byte("Invalid DNS type"))
+		return
+	}
+
+	// Validate and sanitize server parameter if provided
 	dnsServer := r.URL.Query().Get("server")
+	if dnsServer != "" {
+		// Basic validation for DNS server format
+		if len(dnsServer) > 100 || strings.ContainsAny(dnsServer, "\r\n\x00") {
+			w.WriteHeader(400)
+			w.Write([]byte("Invalid DNS server"))
+			return
+		}
+	}
+
 	var result string
 
 	switch typeq {
 	case "WHOIS":
-		result = handleWHOISQuery(query)
+		result = handleWHOISQuery(validatedQuery)
 	case "SPF":
-		result = handleSPFQuery(query, dnsServer)
+		result = handleSPFQuery(validatedQuery, dnsServer)
 	case "DMARC":
-		result = handleDMARCQuery(query, dnsServer)
+		result = handleDMARCQuery(validatedQuery, dnsServer)
 	case "DKIM":
-		result = handleDKIMQuery(query, dnsServer, r)
+		result = handleDKIMQuery(validatedQuery, dnsServer, r)
 	default:
-		result = handleStandardDNSQuery(query, typeq, dnsServer)
+		result = handleStandardDNSQuery(validatedQuery, typeq, dnsServer)
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")

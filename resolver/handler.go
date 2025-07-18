@@ -4,11 +4,17 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
+
+	"headeranalyzer/security"
 )
 
 type Handler struct {
 	templates *template.Template
+	csrf      *security.CSRFManager
+	validator *security.InputValidator
 }
 
 func NewHandler(embeddedFiles embed.FS) *Handler {
@@ -41,14 +47,25 @@ func NewHandler(embeddedFiles embed.FS) *Handler {
 
 	return &Handler{
 		templates: tmpl,
+		csrf:      security.NewCSRFManager(time.Hour),
+		validator: security.NewInputValidator(),
 	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Generate CSRF token for the page
+	csrfToken, err := h.csrf.GenerateToken()
+	if err != nil {
+		http.Redirect(w, r, "/dns?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
+		return
+	}
+
 	data := struct {
 		CurrentPage string
+		CSRFToken   string
 	}{
 		CurrentPage: "dns",
+		CSRFToken:   csrfToken,
 	}
 	h.templates.ExecuteTemplate(w, "dns.html", data)
 }
