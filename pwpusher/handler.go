@@ -13,7 +13,10 @@ func (p *PWPusher) RegisterRoutes(mux *http.ServeMux) {
 	// API endpoint for checking link status
 	mux.HandleFunc("/pwpush/api/status/", p.StatusHandler)
 
-	// PWPusher sub-routes (push viewing)
+	// New short URL format for viewing
+	mux.HandleFunc("/s/", p.ViewHandler)
+
+	// PWPusher sub-routes (push viewing) - for backward compatibility
 	mux.HandleFunc("/pwpush/", func(w http.ResponseWriter, r *http.Request) {
 		// Extract push ID from URL path like /pwpush/abc123
 		id := strings.TrimPrefix(r.URL.Path, "/pwpush/")
@@ -26,7 +29,7 @@ func (p *PWPusher) RegisterRoutes(mux *http.ServeMux) {
 		}
 	})
 
-	// Direct view handler for clean URLs
+	// Direct view handler for clean URLs - for backward compatibility
 	mux.HandleFunc("/pwview/", p.ViewHandler)
 }
 

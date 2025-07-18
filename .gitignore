@@ -2,3 +2,4 @@
 /go.sum
 /ImageMagick
 wordlist.txt
+*.db

@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -269,9 +268,33 @@ func loadViewTemplates(embeddedFS fs.FS) (*template.Template, error) {
 }
 
 func (p *PWPusher) generateID() string {
-	bytes := make([]byte, 16)
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	// Generate random length between 10-16 characters
+	length := 10 + (int(p.randomByte()) % 7) // 10 + 0-6 = 10-16
+
+	bytes := make([]byte, length)
+	for i := range bytes {
+		bytes[i] = charset[p.randomByte()%byte(len(charset))]
+	}
+	return string(bytes)
+}
+
+func (p *PWPusher) generateEncryptionKey() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+	// Generate random length between 5-10 characters (URL safe)
+	length := 5 + (int(p.randomByte()) % 6) // 5 + 0-5 = 5-10
+
+	bytes := make([]byte, length)
+	for i := range bytes {
+		bytes[i] = charset[p.randomByte()%byte(len(charset))]
+	}
+	return string(bytes)
+}
+
+func (p *PWPusher) randomByte() byte {
+	bytes := make([]byte, 1)
 	rand.Read(bytes)
-	return hex.EncodeToString(bytes)
+	return bytes[0]
 }
 
 func (p *PWPusher) encrypt(text string) (string, error) {
@@ -322,6 +345,71 @@ func (p *PWPusher) decrypt(encryptedText string) (string, error) {
 	}
 
 	return string(plaintext), nil
+}
+
+// encryptWithKey encrypts text with an additional key layer
+func (p *PWPusher) encryptWithKey(text, key string) (string, error) {
+	// First encrypt with the PWPusher's main encryption key
+	firstEncryption, err := p.encrypt(text)
+	if err != nil {
+		return "", err
+	}
+
+	// Create a hash of the additional key for AES
+	keyHash := sha256.Sum256([]byte(key))
+
+	block, err := aes.NewCipher(keyHash[:])
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(firstEncryption), nil)
+	return base64.StdEncoding.EncodeToString(ciphertext), nil
+}
+
+// decryptWithKey decrypts text that was encrypted with an additional key layer
+func (p *PWPusher) decryptWithKey(encryptedText, key string) (string, error) {
+	data, err := base64.StdEncoding.DecodeString(encryptedText)
+	if err != nil {
+		return "", err
+	}
+
+	// Create a hash of the additional key for AES
+	keyHash := sha256.Sum256([]byte(key))
+
+	block, err := aes.NewCipher(keyHash[:])
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(data) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, ciphertext := data[:nonceSize], data[nonceSize:]
+	firstDecryption, err := gcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// Now decrypt with the PWPusher's main encryption key
+	return p.decrypt(string(firstDecryption))
 }
 
 // Rate limiting methods for password attempts
@@ -508,8 +596,11 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Encrypt text
-	encryptedText, err := p.encrypt(req.Text)
+	// Generate additional encryption key
+	additionalKey := p.generateEncryptionKey()
+
+	// Encrypt text with double encryption
+	encryptedText, err := p.encryptWithKey(req.Text, additionalKey)
 	if err != nil {
 		log.Printf("Encryption error: %v", err)
 		http.Error(w, "Failed to encrypt text", http.StatusInternalServerError)
@@ -547,12 +638,12 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Prepare response URL
+	// Prepare response URL with new format
 	scheme := "http"
 	if r.TLS != nil {
 		scheme = "https"
 	}
-	fullURL := fmt.Sprintf("%s://%s/pwview/%s", scheme, r.Host, id)
+	fullURL := fmt.Sprintf("%s://%s/s/%s?k=%s", scheme, r.Host, id, additionalKey)
 
 	// Save to user's history if tracking is enabled
 	if req.TrackHistory {
@@ -583,21 +674,47 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 
 func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 	// Extract ID from URL path
-	var path string
-	if strings.HasPrefix(r.URL.Path, "/pwview/") {
-		path = strings.TrimPrefix(r.URL.Path, "/pwview/")
-	} else if strings.HasPrefix(r.URL.Path, "/pwpush/view/") {
-		path = strings.TrimPrefix(r.URL.Path, "/pwpush/view/")
-	} else {
-		path = strings.TrimPrefix(r.URL.Path, "/pwpush/")
-	}
+	var id string
+	var encryptionKey string
 
-	if path == "" {
-		http.Error(w, "Invalid push ID", http.StatusBadRequest)
+	if strings.HasPrefix(r.URL.Path, "/s/") {
+		// New format: /s/<id>?k=<encryption_key>
+		id = strings.TrimPrefix(r.URL.Path, "/s/")
+		encryptionKey = r.URL.Query().Get("k")
+
+		if encryptionKey == "" {
+			// Redirect to PWPusher main page with error popup
+			errorMsg := url.QueryEscape("Missing encryption key. Please use the complete secure link.")
+			http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+			return
+		}
+	} else if strings.HasPrefix(r.URL.Path, "/pwview/") {
+		// Legacy format: /pwview/<id>
+		// For legacy URLs, we'll show an error since they don't have the encryption key
+		errorMsg := url.QueryEscape("This link format is no longer supported. Please use the new secure link format.")
+		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+		return
+	} else if strings.HasPrefix(r.URL.Path, "/pwpush/view/") {
+		// Legacy format: /pwpush/view/<id>
+		// For legacy URLs, we'll show an error since they don't have the encryption key
+		errorMsg := url.QueryEscape("This link format is no longer supported. Please use the new secure link format.")
+		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+		return
+	} else {
+		// Legacy format: /pwpush/<id>
+		// For legacy URLs, we'll show an error since they don't have the encryption key
+		errorMsg := url.QueryEscape("This link format is no longer supported. Please use the new secure link format.")
+		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
 		return
 	}
 
-	log.Printf("ViewHandler: Extracted ID '%s' from URL '%s'", path, r.URL.Path)
+	if id == "" {
+		errorMsg := url.QueryEscape("Invalid push ID.")
+		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+		return
+	}
+
+	log.Printf("ViewHandler: Extracted ID '%s' from URL '%s'", id, r.URL.Path)
 
 	// Handle POST requests (reveal actions and password verification)
 	if r.Method == http.MethodPost {
@@ -606,15 +723,74 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		// Validate CSRF token for form submissions
 		csrfToken := r.FormValue("csrf_token")
 		if !p.validateCSRFToken(csrfToken) {
-			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
+			// Redirect with error popup instead of showing empty error page
+			errorMsg := url.QueryEscape("Invalid or expired security token. Please try again.")
+			redirectURL := fmt.Sprintf("%s?k=%s&error=%s", r.URL.Path, encryptionKey, errorMsg)
+			http.Redirect(w, r, redirectURL, http.StatusSeeOther)
 			return
 		}
 
 		action := r.FormValue("action")
 
 		if action == "reveal" {
-			// Redirect to same URL with show=true parameter
-			http.Redirect(w, r, r.URL.Path+"?show=true", http.StatusSeeOther)
+			// Handle reveal action - decrypt and return content directly
+			// Get push data
+			push, err := p.getPushByID(id)
+			if err != nil {
+				// Redirect with error popup instead of empty page
+				errorMsg := url.QueryEscape("Link not found or has been deleted.")
+				http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+				return
+			}
+
+			// Check if expired
+			if time.Now().After(push.ExpiresAt) || push.IsDeleted {
+				p.renderTemplate(w, "pwview.html", ViewData{
+					CurrentPage: "pwpush",
+					Error:       "This link has expired or been deleted.",
+				})
+				return
+			}
+
+			// Check if max views reached
+			if push.CurrentViews >= push.MaxViews {
+				p.renderTemplate(w, "pwview.html", ViewData{
+					CurrentPage: "pwpush",
+					Error:       "This link has reached its maximum view limit.",
+				})
+				return
+			}
+
+			// Increment view count
+			_, err = p.db.Exec("UPDATE pushes SET current_views = current_views + 1 WHERE id = ?", id)
+			if err != nil {
+				log.Printf("Failed to increment view count: %v", err)
+			}
+
+			// Refresh push data to get updated view count
+			push, err = p.getPushByID(id)
+			if err != nil {
+				log.Printf("Failed to get updated push data: %v", err)
+			}
+
+			// Decrypt text with the encryption key
+			text, err := p.decryptWithKey(push.EncryptedText, encryptionKey)
+			if err != nil {
+				log.Printf("Failed to decrypt text: %v", err)
+				// Redirect with error popup instead of empty page
+				errorMsg := url.QueryEscape("Failed to decrypt content - invalid encryption key. Please check your link.")
+				http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+				return
+			}
+
+			// Render the text with delete option if auto-delete is enabled
+			p.renderTemplate(w, "pwview.html", ViewData{
+				CurrentPage: "pwpush",
+				Push:        push,
+				Text:        text,
+				ShowText:    true,
+				Revealed:    true,
+			})
 			return
 		} else if action == "verify_password" {
 			// Handle password verification with rate limiting
@@ -627,7 +803,7 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 				log.Printf("IP %s is blocked until %v", clientIP, blockedUntil)
 				p.renderTemplate(w, "pwview.html", ViewData{
 					CurrentPage:     "pwpush",
-					Push:            &PushData{ID: path}, // Minimal push data for display
+					Push:            &PushData{ID: id}, // Minimal push data for display
 					RequirePassword: true,
 					IsBlocked:       true,
 					BlockedUntil:    blockedUntil,
@@ -639,9 +815,11 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 			password := r.FormValue("password")
 
 			// Get push data to check password
-			push, err := p.getPushByID(path)
+			push, err := p.getPushByID(id)
 			if err != nil {
-				http.Error(w, "Link not found", http.StatusNotFound)
+				// Redirect with error popup instead of empty page
+				errorMsg := url.QueryEscape("Link not found or has been deleted.")
+				http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
 				return
 			}
 
@@ -675,14 +853,44 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			// Password is correct - reset failed attempts and redirect
+			// Password is correct - reset failed attempts and show content directly
 			log.Printf("Correct password for IP %s, resetting attempts", clientIP)
 			p.resetFailedAttempts(clientIP)
-			http.Redirect(w, r, r.URL.Path+"?show=true&verified=true", http.StatusSeeOther)
+
+			// Decrypt text with the encryption key
+			text, err := p.decryptWithKey(push.EncryptedText, encryptionKey)
+			if err != nil {
+				log.Printf("Failed to decrypt text: %v", err)
+				// Redirect with error popup instead of empty page
+				errorMsg := url.QueryEscape("Failed to decrypt content - invalid encryption key. Please check your link.")
+				http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
+				return
+			}
+
+			// Increment view count since password is correct
+			_, err = p.db.Exec("UPDATE pushes SET current_views = current_views + 1 WHERE id = ?", id)
+			if err != nil {
+				log.Printf("Failed to increment view count: %v", err)
+			}
+
+			// Refresh push data to get updated view count
+			push, err = p.getPushByID(id)
+			if err != nil {
+				log.Printf("Failed to get updated push data: %v", err)
+			}
+
+			// Render the text directly (no click required since password was verified)
+			p.renderTemplate(w, "pwview.html", ViewData{
+				CurrentPage: "pwpush",
+				Push:        push,
+				Text:        text,
+				ShowText:    true,
+				Revealed:    true,
+			})
 			return
 		} else if action == "delete" {
 			// Manual delete action
-			_, err := p.db.Exec("UPDATE pushes SET is_deleted = 1 WHERE id = ?", path)
+			_, err := p.db.Exec("UPDATE pushes SET is_deleted = 1 WHERE id = ?", id)
 			if err != nil {
 				log.Printf("Failed to mark as deleted: %v", err)
 			}
@@ -694,11 +902,8 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if this is a reveal request
-	showText := r.URL.Query().Get("show") == "true"
-
 	// Get push data
-	push, err := p.getPushByID(path)
+	push, err := p.getPushByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			p.renderTemplate(w, "pwview.html", ViewData{
@@ -731,8 +936,7 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if password is required and not yet verified
-	passwordVerified := r.URL.Query().Get("verified") == "true"
-	if push.PasswordHash != "" && !passwordVerified {
+	if push.PasswordHash != "" {
 		clientIP := p.getClientIP(r)
 
 		// Check if client is blocked
@@ -760,8 +964,8 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If require click is enabled and showText is not true, show the reveal page
-	if push.RequireClick && !showText && push.PasswordHash == "" {
+	// If require click is enabled, show the reveal page (only for GET requests)
+	if push.RequireClick {
 		p.renderTemplate(w, "pwview.html", ViewData{
 			CurrentPage:  "pwpush",
 			Push:         push,
@@ -771,25 +975,26 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Increment view count only when actually viewing content
-	if showText || !push.RequireClick {
-		_, err = p.db.Exec("UPDATE pushes SET current_views = current_views + 1 WHERE id = ?", path)
-		if err != nil {
-			log.Printf("Failed to increment view count: %v", err)
-		}
-
-		// Refresh push data to get updated view count
-		push, err = p.getPushByID(path)
-		if err != nil {
-			log.Printf("Failed to get updated push data: %v", err)
-		}
+	// If no restrictions (no password, no click required), show content directly
+	// Increment view count
+	_, err = p.db.Exec("UPDATE pushes SET current_views = current_views + 1 WHERE id = ?", id)
+	if err != nil {
+		log.Printf("Failed to increment view count: %v", err)
 	}
 
-	// Decrypt text
-	text, err := p.decrypt(push.EncryptedText)
+	// Refresh push data to get updated view count
+	push, err = p.getPushByID(id)
+	if err != nil {
+		log.Printf("Failed to get updated push data: %v", err)
+	}
+
+	// Decrypt text with the encryption key
+	text, err := p.decryptWithKey(push.EncryptedText, encryptionKey)
 	if err != nil {
 		log.Printf("Failed to decrypt text: %v", err)
-		http.Error(w, "Failed to decrypt content", http.StatusInternalServerError)
+		// Redirect with error popup instead of empty page
+		errorMsg := url.QueryEscape("Failed to decrypt content - invalid encryption key. Please check your link.")
+		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
 		return
 	}
 
@@ -898,9 +1103,9 @@ func (p *PWPusher) validateAndSanitizeText(text string) (string, error) {
 		return "", fmt.Errorf("text contains invalid UTF-8 characters")
 	}
 
-	// Sanitize HTML
-	sanitized := html.EscapeString(text)
-	return sanitized, nil
+	// Store the original text without HTML escaping
+	// The template will handle safe display
+	return text, nil
 }
 
 func (p *PWPusher) validatePassword(password string) error {
