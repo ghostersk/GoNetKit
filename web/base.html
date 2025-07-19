@@ -1,108 +1,240 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{block "title" .}}HeaderAnalyzer{{end}}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <title>{{block "title" .}}{{end}}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/style.css">
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            bg: '#1e1e1e',
+                            surface: '#2d2d2d',
+                            border: '#404040',
+                            text: '#e0e0e0',
+                            muted: '#999999'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        /* Popup notification styles */
-        .popup-notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
-            background: #f44336;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            max-width: 400px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            transform: translateX(100%);
-            transition: transform 0.3s ease-in-out;
+        /* Custom animations and styles */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
         
-        .popup-notification.show {
-            transform: translateX(0);
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
         
-        .popup-notification.error {
-            background: #f44336;
+        .animate-slide-in-right {
+            animation: slideInRight 0.3s ease-out forwards;
         }
         
-        .popup-notification.warning {
-            background: #ff9800;
+        .animate-slide-out-right {
+            animation: slideOutRight 0.3s ease-in forwards;
         }
         
-        .popup-notification.success {
-            background: #4caf50;
+        /* Backdrop blur for popup */
+        .backdrop-blur-popup {
+            backdrop-filter: blur(8px);
         }
         
-        .popup-notification.info {
-            background: #2196f3;
-        }
-        
-        .popup-notification .close-btn {
-            float: right;
-            background: none;
-            border: none;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-left: 10px;
-            padding: 0;
-            line-height: 1;
-        }
-        
-        .popup-notification .close-btn:hover {
-            opacity: 0.7;
+        /* Floating button styles */
+        .floating-nav {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
     </style>
     {{block "head" .}}{{end}}
 </head>
-<body>
-    <nav>
-        <a href="/" {{if eq .CurrentPage "home"}}class="active"{{end}}>Analyze New Header</a>
-        <a href="/dns" {{if eq .CurrentPage "dns"}}class="active"{{end}}>DNS Tools</a>
-        <a href="/password" {{if eq .CurrentPage "password"}}class="active"{{end}}>Password Generator</a>
-        <a href="/pwpush" {{if eq .CurrentPage "pwpush"}}class="active"{{end}}>Password Pusher</a>
-    </nav>
+<body class="bg-dark-bg text-dark-text min-h-screen">
+    <!-- Floating Navigation -->
+    <div class="fixed top-4 right-4 z-50 floating-nav">
+        <div class="flex bg-dark-surface border border-dark-border rounded-full overflow-hidden">
+            <!-- Home Button -->
+            <a href="/" class="flex items-center justify-center w-12 h-12 bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-white">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/>
+                </svg>
+            </a>
+            
+            <!-- Menu Button -->
+            <button id="menuButton" class="flex items-center justify-center w-12 h-12 bg-dark-surface hover:bg-gray-700 transition-colors duration-200 text-dark-text">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Navigation Popup -->
+    <div id="navigationPopup" class="fixed inset-0 z-40 hidden">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-popup" onclick="closeNavigationPopup()"></div>
+        
+        <!-- Popup Content -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark-surface border border-dark-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold text-dark-text">Navigation</h2>
+                <button onclick="closeNavigationPopup()" class="text-dark-muted hover:text-dark-text transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- IT Tools Category -->
+            <div class="mb-6">
+                <h3 class="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">IT Tools</h3>
+                <div class="space-y-2">
+                    <a href="/analyze" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
+                        <div class="flex items-center justify-center w-10 h-10 bg-green-600 rounded-lg mr-3 group-hover:bg-green-700 transition-colors">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-dark-text font-medium">Email Header Analyzer</div>
+                            <div class="text-dark-muted text-sm">Analyze email headers for security</div>
+                        </div>
+                    </a>
+                    
+                    <a href="/dns" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
+                        <div class="flex items-center justify-center w-10 h-10 bg-purple-600 rounded-lg mr-3 group-hover:bg-purple-700 transition-colors">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-dark-text font-medium">DNS Tools</div>
+                            <div class="text-dark-muted text-sm">DNS lookups and network diagnostics</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Online Security Category -->
+            <div>
+                <h3 class="text-sm font-semibold text-orange-400 uppercase tracking-wide mb-3">Online Security</h3>
+                <div class="space-y-2">
+                    <a href="/pwgenerator" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
+                        <div class="flex items-center justify-center w-10 h-10 bg-yellow-600 rounded-lg mr-3 group-hover:bg-yellow-700 transition-colors">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-0.257-.257A6 6 0 1118 8zm-1.5 0a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM10 7a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-dark-text font-medium">Password Generator</div>
+                            <div class="text-dark-muted text-sm">Generate secure passwords</div>
+                        </div>
+                    </a>
+                    
+                    <a href="/pwpush" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
+                        <div class="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg mr-3 group-hover:bg-red-700 transition-colors">
+                            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="text-dark-text font-medium">Password Pusher</div>
+                            <div class="text-dark-muted text-sm">Share sensitive text securely</div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    <main>
+    <main class="container mx-auto px-4 py-6 pt-8">
         {{block "content" .}}
-        <div class="container">
-            <h1>HeaderAnalyzer</h1>
-            <p>Welcome to HeaderAnalyzer - your tool for email header analysis, DNS tools, and password generation.</p>
+        <div class="text-center">
+            <h1 class="text-4xl font-bold mb-4">HeaderAnalyzer</h1>
+            <p class="text-dark-muted text-lg">Welcome to HeaderAnalyzer - your comprehensive toolkit for IT and security tools.</p>
         </div>
         {{end}}
     </main>
     
     <!-- Popup notification container -->
-    <div id="popup-container"></div>
+    <div id="popup-container" class="fixed top-4 left-4 z-50 space-y-2"></div>
     
     <script>
-        // Popup notification system
+        // Navigation popup functionality
+        function openNavigationPopup() {
+            const popup = document.getElementById('navigationPopup');
+            popup.classList.remove('hidden');
+        }
+        
+        function closeNavigationPopup() {
+            const popup = document.getElementById('navigationPopup');
+            popup.classList.add('hidden');
+        }
+        
+        // Menu button click handler
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuButton = document.getElementById('menuButton');
+            menuButton.addEventListener('click', openNavigationPopup);
+        });
+        
+        // Popup notification system with Tailwind classes
         function showPopup(message, type = 'error', duration = 5000) {
             const container = document.getElementById('popup-container');
             const popup = document.createElement('div');
-            popup.className = `popup-notification ${type}`;
+            
+            let bgClass = 'bg-red-600';
+            let iconSvg = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            </svg>`;
+            
+            switch(type) {
+                case 'success':
+                    bgClass = 'bg-green-600';
+                    iconSvg = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>`;
+                    break;
+                case 'warning':
+                    bgClass = 'bg-yellow-600';
+                    iconSvg = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>`;
+                    break;
+                case 'info':
+                    bgClass = 'bg-blue-600';
+                    iconSvg = `<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    </svg>`;
+                    break;
+            }
+            
+            popup.className = `${bgClass} text-white p-4 rounded-lg shadow-lg max-w-sm w-full animate-slide-in-right flex items-start space-x-3`;
             popup.innerHTML = `
-                <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
-                ${message}
+                <div class="flex-shrink-0">${iconSvg}</div>
+                <div class="flex-grow">${message}</div>
+                <button class="flex-shrink-0 text-white hover:text-gray-200 transition-colors" onclick="this.parentElement.remove()">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
             `;
             
             container.appendChild(popup);
             
-            // Trigger animation
-            setTimeout(() => popup.classList.add('show'), 10);
-            
             // Auto-remove after duration
             if (duration > 0) {
                 setTimeout(() => {
-                    popup.classList.remove('show');
+                    popup.classList.remove('animate-slide-in-right');
+                    popup.classList.add('animate-slide-out-right');
                     setTimeout(() => popup.remove(), 300);
                 }, duration);
             }
@@ -118,7 +250,6 @@
             
             if (error) {
                 showPopup(decodeURIComponent(error), 'error');
-                // Clean URL
                 urlParams.delete('error');
                 window.history.replaceState({}, '', `${window.location.pathname}${urlParams.toString() ? '?' + urlParams.toString() : ''}`);
             }

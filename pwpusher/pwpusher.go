@@ -198,8 +198,6 @@ func initDatabase() (*sql.DB, error) {
 }
 
 func loadPushTemplates(embeddedFS fs.FS) (*template.Template, error) {
-	log.Printf("Loading PWPusher push templates...")
-
 	templates := template.New("").Funcs(template.FuncMap{
 		"formatTime": func(t time.Time) string {
 			return t.Format("2006-01-02 15:04:05")
@@ -214,14 +212,10 @@ func loadPushTemplates(embeddedFS fs.FS) (*template.Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse push templates: %v", err)
 	}
-
-	log.Printf("PWPusher push templates loaded successfully")
 	return templates, nil
 }
 
 func loadViewTemplates(embeddedFS fs.FS) (*template.Template, error) {
-	log.Printf("Loading PWPusher view templates...")
-
 	templates := template.New("").Funcs(template.FuncMap{
 		"formatTime": func(t time.Time) string {
 			return t.Format("2006-01-02 15:04:05")
@@ -257,8 +251,6 @@ func loadViewTemplates(embeddedFS fs.FS) (*template.Template, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse view templates: %v", err)
 	}
-
-	log.Printf("PWPusher view templates loaded successfully")
 	return templates, nil
 }
 
@@ -442,9 +434,6 @@ func (p *PWPusher) recordFailedAttempt(clientIP string) {
 		}
 	}
 
-	// Log for debugging
-	log.Printf("Failed attempt recorded for IP %s: Count=%d, BlockedUntil=%v",
-		clientIP, p.failedAttempts[clientIP].Count, p.failedAttempts[clientIP].BlockedUntil)
 }
 
 func (p *PWPusher) resetFailedAttempts(clientIP string) {
@@ -468,7 +457,6 @@ func (p *PWPusher) getBlockedUntil(clientIP string) time.Time {
 // HTTP Handlers
 
 func (p *PWPusher) IndexHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("PWPusher IndexHandler called: %s %s", r.Method, r.URL.Path)
 
 	if r.Method == http.MethodPost {
 		p.handleCreatePush(w, r)
@@ -478,7 +466,6 @@ func (p *PWPusher) IndexHandler(w http.ResponseWriter, r *http.Request) {
 	// For GET requests, render the form with CurrentPage
 	csrfToken, err := p.generateCSRFToken()
 	if err != nil {
-		log.Printf("Error generating CSRF token: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -495,7 +482,6 @@ func (p *PWPusher) IndexHandler(w http.ResponseWriter, r *http.Request) {
 		Success:      false,
 		CSRFToken:    csrfToken,
 	}
-	log.Printf("Rendering pwpush.html template with data: %+v", data)
 	p.renderTemplate(w, "pwpush.html", data)
 }
 
@@ -522,7 +508,8 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 		// Validate CSRF token for form submissions
 		csrfToken := r.FormValue("csrf_token")
 		if !p.validateCSRFToken(csrfToken) {
-			http.Error(w, "Invalid CSRF token", http.StatusForbidden)
+			w.Header().Set("Location", "/pwpusher?error="+url.QueryEscape("Invalid CSRF token"))
+			http.Redirect(w, r, "/pwpusher?error="+url.QueryEscape("Invalid CSRF token"), http.StatusSeeOther)
 			return
 		}
 
@@ -549,23 +536,30 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	// Comprehensive input validation
 	sanitizedText, err := p.validator.ValidateAndSanitizeText(req.Text, 100000)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.Header().Set("Location", "/pwpusher?error="+url.QueryEscape(err.Error()))
+		http.Redirect(w, r, "/pwpusher?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	req.Text = sanitizedText
 
-	if err := p.validator.ValidatePassword(req.Password); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	// Only validate password if one is provided (passwords are optional)
+	if req.Password != "" {
+		if err := p.validator.ValidatePassword(req.Password); err != nil {
+			w.Header().Set("Location", "/pwpusher?error="+url.QueryEscape(err.Error()))
+			http.Redirect(w, r, "/pwpusher?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
+			return
+		}
 	}
 
 	if err := p.validator.ValidateIntRange(req.ExpiryDays, MinExpiryDays, MaxExpiryDays, "expiry days"); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.Header().Set("Location", "/pwpusher?error="+url.QueryEscape(err.Error()))
+		http.Redirect(w, r, "/pwpusher?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
 	if err := p.validator.ValidateIntRange(req.MaxViews, MinViews, MaxViews, "max views"); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.Header().Set("Location", "/pwpusher?error="+url.QueryEscape(err.Error()))
+		http.Redirect(w, r, "/pwpusher?error="+url.QueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 
@@ -575,7 +569,6 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	// Encrypt text with double encryption
 	encryptedText, err := p.encryptWithKey(req.Text, additionalKey)
 	if err != nil {
-		log.Printf("Encryption error: %v", err)
 		http.Error(w, "Failed to encrypt text", http.StatusInternalServerError)
 		return
 	}
@@ -591,7 +584,6 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 	if req.Password != "" {
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 		if err != nil {
-			log.Printf("Failed to hash password: %v", err)
 			http.Error(w, "Failed to process password", http.StatusInternalServerError)
 			return
 		}
@@ -686,8 +678,6 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/pwpush?error=%s", errorMsg), http.StatusSeeOther)
 		return
 	}
-
-	log.Printf("ViewHandler: Extracted ID '%s' from URL '%s'", id, r.URL.Path)
 
 	// Handle POST requests (reveal actions and password verification)
 	if r.Method == http.MethodPost {
@@ -827,7 +817,6 @@ func (p *PWPusher) ViewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Password is correct - reset failed attempts and show content directly
-			log.Printf("Correct password for IP %s, resetting attempts", clientIP)
 			p.resetFailedAttempts(clientIP)
 
 			// Decrypt text with the encryption key
@@ -1190,8 +1179,6 @@ func (p *PWPusher) setHistoryCookies(w http.ResponseWriter, history []map[string
 func (p *PWPusher) renderTemplate(w http.ResponseWriter, templateName string, data interface{}) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-	log.Printf("Attempting to render template: %s", templateName)
-
 	// Auto-add CSRF token for ViewData structs
 	if viewData, ok := data.(*ViewData); ok && viewData.CSRFToken == "" {
 		if err := p.addCSRFToken(viewData); err != nil {
@@ -1220,15 +1207,11 @@ func (p *PWPusher) renderTemplate(w http.ResponseWriter, templateName string, da
 
 	// Check if template exists
 	if templates.Lookup(templateName) == nil {
-		log.Printf("Template %s not found, using basic page", templateName)
 		p.renderBasicPage(w, templateName, data)
 		return
 	}
-
-	log.Printf("Template %s found, executing with data: %+v", templateName, data)
 	// Execute the specific template directly
 	if err := templates.ExecuteTemplate(w, templateName, data); err != nil {
-		log.Printf("Template error: %v", err)
 		// Fallback to basic HTML
 		w.Write([]byte(`<!DOCTYPE html><html><head><title>PWPusher</title></head><body>
 			<h1>PWPusher - Template Error</h1>

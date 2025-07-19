@@ -6,640 +6,234 @@
 {{if .Success}}
 <meta name="success-data" content='{"id":"{{.ID}}","url":"{{.PushURL}}","expiresAt":"{{.ExpiresAt}}"}'>
 {{end}}
-<style>
-:root {
-    --bg-color: #1e1e1e;
-    --text-color: #e0e0e0;
-    --section-bg: #2d2d2d;
-    --border-color: #404040;
-    --highlight: #3c5c7c;
-    --success: #4caf50;
-    --warning: #ff9800;
-    --error: #f44336;
-    --danger: #f44336;
-    --info: #2196f3;
-    --muted-color: #999;
-}
-
-body {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-}
-
-.container {
-    background-color: var(--bg-color);
-    color: var(--text-color);
-}
-
-input, textarea {
-    background-color: var(--section-bg);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-
-.push-form, .info-section, .history-section {
-    background-color: var(--section-bg);
-    border: 1px solid var(--border-color);
-}
-
-.history-header {
-    background-color: #333;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.history-stats {
-    background-color: #333;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.stat-badge {
-    background-color: var(--section-bg);
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.history-table th {
-    background-color: #333;
-    color: var(--text-color);
-    border-bottom: 2px solid var(--border-color);
-}
-
-.history-table td {
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.history-table tr:hover:not(.empty-row) {
-    background-color: #333;
-}
-
-.preview-text {
-    background-color: #333;
-    color: var(--text-color);
-}
-
-.btn-danger {
-    background: var(--error);
-}
-
-.btn-sm {
-    font-size: 12px;
-    padding: 6px 12px;
-}
-
-.notes-cell {
-    max-width: 120px;
-    font-size: 12px;
-}
-
-.notes-text {
-    color: #aaa;
-    font-style: italic;
-}
-
-.container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-.alert {
-    padding: 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    border-left: 4px solid var(--success);
-}
-
-.alert-success {
-    background-color: var(--section-bg);
-    color: var(--success);
-    border-color: var(--success);
-}
-
-.link-container {
-    display: flex;
-    gap: 10px;
-    margin: 15px 0;
-}
-
-.link-container input {
-    flex: 1;
-    padding: 10px;
-    border: 2px solid var(--border-color);
-    border-radius: 4px;
-    font-family: monospace;
-    background: var(--section-bg);
-    color: var(--text-color);
-}
-
-.copy-btn {
-    padding: 10px 15px;
-    background: var(--highlight);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-.push-form {
-    background: var(--section-bg);
-    padding: 30px;
-    border-radius: 8px;
-    margin: 20px 0;
-    border: 1px solid var(--border-color);
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    color: var(--text-color);
-}
-
-.form-group textarea {
-    width: 100%;
-    min-height: 120px;
-    padding: 12px;
-    border: 2px solid var(--border-color);
-    border-radius: 4px;
-    font-family: monospace;
-    resize: vertical;
-    background: var(--section-bg);
-    color: var(--text-color);
-}
-
-.form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
-
-.form-group input[type="range"] {
-    width: 100%;
-    margin: 10px 0;
-}
-
-.range-display {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 5px;
-}
-
-.range-display span {
-    font-weight: bold;
-    color: var(--highlight);
-}
-
-.checkbox-group {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    cursor: pointer;
-}
-
-.checkbox-label input[type="checkbox"] {
-    margin-top: 2px;
-}
-
-.checkbox-label small {
-    display: block;
-    color: #aaa;
-    margin-top: 4px;
-}
-
-.btn {
-    display: inline-block;
-    padding: 12px 24px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    text-decoration: none;
-    font-weight: bold;
-    transition: all 0.3s ease;
-}
-
-.btn-primary {
-    background: var(--highlight);
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #2a4c6c;
-}
-
-.btn-secondary {
-    background: #6c757d;
-    color: white;
-}
-
-.btn-large {
-    padding: 15px 30px;
-    font-size: 18px;
-    width: 100%;
-}
-
-.info-section {
-    background: var(--section-bg);
-    padding: 25px;
-    border-radius: 8px;
-    margin: 20px 0;
-    border: 1px solid var(--border-color);
-}
-
-.info-section h3 {
-    margin-top: 0;
-    color: var(--text-color);
-}
-
-.info-section ul {
-    list-style: none;
-    padding: 0;
-}
-
-.info-section li {
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-color);
-}
-
-.info-section li:last-child {
-    border-bottom: none;
-}
-
-.actions {
-    margin-top: 20px;
-    text-align: center;
-}
-
-/* History Section Styles */
-.history-section {
-    margin-top: 40px;
-    background: var(--section-bg);
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-}
-
-.history-header {
-    background: var(--bg-color);
-    padding: 20px;
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.history-header h2 {
-    margin: 0;
-    color: var(--text-color);
-}
-
-.history-controls {
-    display: flex;
-    gap: 10px;
-}
-
-.history-stats {
-    padding: 15px 20px;
-    background: var(--bg-color);
-    border-bottom: 1px solid var(--border-color);
-    display: flex;
-    gap: 15px;
-}
-
-.stat-badge {
-    background: var(--section-bg);
-    padding: 6px 12px;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--text-color);
-}
-
-.stat-badge.active {
-    background: var(--success);
-    color: white;
-    border-color: var(--success);
-}
-
-.stat-badge.expired {
-    background: var(--danger);
-    color: white;
-    border-color: var(--danger);
-}
-
-.history-table-container {
-    overflow-x: auto;
-    max-width: 100%;
-}
-
-.history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 600px;
-}
-
-.history-table th {
-    background: var(--bg-color);
-    padding: 10px 6px;
-    text-align: left;
-    font-weight: bold;
-    color: var(--text-color);
-    border-bottom: 2px solid var(--border-color);
-    white-space: nowrap;
-    font-size: 12px;
-}
-
-.history-table td {
-    padding: 10px 6px;
-    border-bottom: 1px solid var(--border-color);
-    vertical-align: middle;
-    color: var(--text-color);
-    font-size: 12px;
-}
-
-.history-table tr.expired {
-    background: var(--bg-color);
-    opacity: 0.7;
-}
-
-.history-table tr:hover:not(.empty-row) {
-    background: var(--section-bg);
-}
-
-.empty-row td {
-    text-align: center;
-    padding: 40px 20px;
-    color: var(--muted-color);
-    font-style: italic;
-}
-
-.date-cell {
-    white-space: nowrap;
-    color: var(--muted-color);
-    min-width: 110px;
-    font-size: 11px;
-}
-
-.views-cell {
-    text-align: center;
-    font-weight: bold;
-    min-width: 60px;
-    font-size: 11px;
-}
-
-.notes-cell {
-    max-width: 150px;
-    font-size: 11px;
-    word-break: break-word;
-}
-
-.status-cell {
-    text-align: center;
-    min-width: 80px;
-}
-
-.status-badge {
-    padding: 3px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: bold;
-    white-space: nowrap;
-}
-
-.status-badge.active {
-    background: var(--success);
-    color: white;
-}
-
-.status-badge.expired {
-    background: var(--danger);
-    color: white;
-}
-
-.status-badge.deleted {
-    background: #6c757d;
-    color: white;
-}
-
-.actions-cell {
-    text-align: center;
-    white-space: nowrap;
-    min-width: 140px;
-}
-
-.btn-xs {
-    padding: 3px 6px;
-    font-size: 10px;
-    margin: 0 1px;
-    border-radius: 3px;
-}
-
-.expired-text {
-    color: var(--muted-color);
-    font-size: 12px;
-    font-style: italic;
-}
-
-@media (max-width: 768px) {
-    .form-row {
-        grid-template-columns: 1fr;
-    }
-    
-    .link-container {
-        flex-direction: column;
-    }
-    
-    .history-header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: flex-start;
-    }
-    
-    .history-stats {
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-    
-    .history-table {
-        font-size: 10px;
-        min-width: 500px;
-    }
-    
-    .history-table th,
-    .history-table td {
-        padding: 6px 3px;
-    }
-    
-    .notes-cell {
-        max-width: 100px;
-    }
-    
-    .date-cell {
-        font-size: 9px;
-        min-width: 90px;
-    }
-    
-    .actions-cell {
-        min-width: 120px;
-    }
-    
-    .btn-xs {
-        padding: 2px 4px;
-        font-size: 9px;
-    }
-}
-</style>
 {{end}}
 
 {{define "content"}}
 <div class="container">
-    <h1>🔐 Password Pusher</h1>
-    <p>Share sensitive text securely with automatic expiration and view limits.</p>
+    <div class="text-center mb-8">
+        <a href="/pwpush" class="inline-block">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-100 hover:text-blue-400 transition-colors cursor-pointer mb-4">
+                🔐 Password Pusher
+            </h1>
+        </a>
+        <p class="text-lg text-gray-300 max-w-2xl mx-auto">
+            Share sensitive text securely with automatic expiration and view limits.
+        </p>
+    </div>
     
     {{if .Success}}
-    <div class="alert alert-success">
-        <h3>✅ Secure Link Created!</h3>
-        <p>Your text has been encrypted and stored securely. Share this link:</p>
-        <div class="link-container">
-            <input type="text" id="pushUrl" value="{{.PushURL}}" readonly onclick="this.select()">
-            <button onclick="copyToClipboard()" class="copy-btn">📋 Copy</button>
+    <div class="bg-green-800 border border-green-600 rounded-lg p-6 mb-8 max-w-4xl mx-auto">
+        <h3 class="text-xl font-bold text-green-100 mb-4">✅ Secure Link Created!</h3>
+        <p class="text-green-200 mb-4">Your text has been encrypted and stored securely. Share this link:</p>
+        <div class="flex flex-col sm:flex-row gap-3 mb-4 p-4 bg-green-900/50 rounded-lg border border-green-700">
+            <input type="text" 
+                   id="pushUrl" 
+                   value="{{.PushURL}}" 
+                   readonly 
+                   onclick="this.select()"
+                   class="flex-1 p-3 bg-gray-900 border-2 border-gray-600 rounded-lg text-gray-100 font-mono text-sm focus:border-green-500 focus:outline-none">
+            <button onclick="copyToClipboard()" 
+                    class="copy-btn bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap">
+                📋 Copy
+            </button>
         </div>
-        <p><small>🕒 Expires: {{.ExpiresAt}} | 🆔 ID: {{.ID}}</small></p>
-        <p><strong>⚠️ Important:</strong> This link will only work once if auto-delete is enabled!</p>
-        <a href="/pwpush" class="btn btn-primary">Create Another Link</a>
+        <p class="text-green-300 text-sm mb-4">🕒 Expires: {{.ExpiresAt}}</p>
+        <a href="/pwpush" 
+           class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+            Create Another Link
+        </a>
     </div>
     {{else}}
     
-    <form id="pushForm" method="post" class="push-form">
+    <form id="pushForm" method="post" class="bg-gray-800 rounded-lg p-6 mb-8 max-w-4xl mx-auto border border-gray-700 shadow-lg">
         {{if .CSRFToken}}
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         {{end}}
-        <div class="form-group">
-            <label for="text">📝 Text to Share:</label>
-            <textarea name="text" id="text" placeholder="Enter your password, secret, or sensitive text here..." required></textarea>
-            <small>Enter any sensitive information you want to share securely.</small>
-        </div>
         
-        <div class="form-group">
-            <label for="protection_password">🔑 Password Protection (Optional):</label>
-            <input type="password" name="password" id="protection_password" 
-                   placeholder="Leave empty for no password protection"
-                   style="width: 75%; padding: 15px 20px; border: 2px solid var(--border-color); 
-                          border-radius: 8px; background-color: var(--section-bg); color: var(--text-color); 
-                          font-size: 13px; font-family: monospace; margin-top: 5px;"><br>
-            <small>If set, viewers must enter this password to access the content. This bypasses the click-to-reveal feature.</small>
-        </div>
-        
-        <div class="form-row">
-            <div class="form-group">
-                <label for="expiry_days">⏰ Expires After:</label>
-                <input type="range" name="expiry_days" id="expiry_days" min="1" max="90" value="7" 
-                       oninput="updateExpiryDisplay(this.value)">
-                <div class="range-display">
-                    <span id="expiryDisplay">7 days</span>
-                    <small>Max: 3 months</small>
-                </div>
+        <!-- Main content area -->
+        <div class="space-y-6 mb-8">
+            <div class="w-full">
+                <label for="text" class="block text-sm font-semibold text-gray-200 mb-2">📝 Text to Share:</label>
+                <textarea name="text" id="text" 
+                          class="w-full p-4 bg-gray-900 border-2 border-gray-600 rounded-lg text-gray-100 font-mono resize-y focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                          rows="6" 
+                          placeholder="Enter your password, secret, or sensitive text here..." 
+                          required></textarea>
+                <small class="block mt-1 text-xs text-gray-400">Enter any sensitive information you want to share securely.</small>
             </div>
             
-            <div class="form-group">
-                <label for="max_views">👁️ Maximum Views:</label>
-                <input type="range" name="max_views" id="max_views" min="1" max="100" value="10" 
-                       oninput="updateViewsDisplay(this.value)">
-                <div class="range-display">
-                    <span id="viewsDisplay">10 views</span>
-                    <small>Max: 100 views</small>
+            <div class="w-full">
+                <label for="protection_password" class="block text-sm font-semibold text-gray-200 mb-2">🔑 Password Protection (Optional):</label>
+                <input type="password" 
+                       name="password" 
+                       id="protection_password" 
+                       class="w-full p-3 bg-gray-900 border-2 border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
+                       placeholder="Leave empty for no password protection">
+                <small class="block mt-1 text-xs text-gray-400">If set, viewers must enter this password to access the content. This bypasses the click-to-reveal feature.</small>
+            </div>
+        </div>
+        
+        <!-- Advanced Settings Toggle -->
+        <div class="mb-8">
+            <button type="button" 
+                    onclick="toggleAdvancedSettings()"
+                    class="flex items-center justify-between w-full p-2 bg-gray-900 rounded-lg border border-gray-700 hover:bg-gray-800 transition-colors">
+                <span class="flex items-center space-x-2 text-gray-200 font-medium">
+                    <span class="text-lg">⚙️</span>
+                    <span>Advanced Settings <small class="text-gray-500">(Expiry, Click to reveal, History, Deletion)</small></span>
+                </span>
+                <span id="advancedToggleIcon" class="text-gray-400 transform transition-transform duration-200">▼</span>
+            </button>
+            
+            <div id="advancedSettings" class="hidden mt-4 space-y-6">
+                <!-- Settings grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-gray-900 rounded-lg border border-gray-700">
+                    <div class="space-y-3">
+                        <label for="expiry_days" class="block text-sm font-semibold text-gray-200">⏰ Expires After:</label>
+                        <input type="range" 
+                               name="expiry_days" 
+                               id="expiry_days" 
+                               min="1" max="90" value="7" 
+                               class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateExpiryDisplay(this.value)">
+                        <div class="flex justify-between items-center text-sm">
+                            <span id="expiryDisplay" class="font-bold text-blue-400">7 days</span>
+                            <small class="text-gray-500">Max: 3 months</small>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <label for="max_views" class="block text-sm font-semibold text-gray-200">👁️ Maximum Views:</label>
+                        <input type="range" 
+                               name="max_views" 
+                               id="max_views" 
+                               min="1" max="100" value="10" 
+                               class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                               oninput="updateViewsDisplay(this.value)">
+                        <div class="flex justify-between items-center text-sm">
+                            <span id="viewsDisplay" class="font-bold text-blue-400">10 views</span>
+                            <small class="text-gray-500">Max: 100 views</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Options -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gray-900 rounded-lg border border-gray-700">
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="require_click" 
+                                   checked
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                            <span class="text-sm font-medium text-gray-200">🛡️ Require click to reveal</span>
+                        </label>
+                        <small class="block text-xs text-gray-400 ml-8">Hides content from web crawlers and requires user interaction</small>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="auto_delete"
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                            <span class="text-sm font-medium text-gray-200">🗑️ Allow manual deletion</span>
+                        </label>
+                        <small class="block text-xs text-gray-400 ml-8">Adds a delete button when content is viewed (viewer can choose to delete)</small>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-3 cursor-pointer">
+                            <input type="checkbox" 
+                                   name="track_history" 
+                                   id="track_history"
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                            <span class="text-sm font-medium text-gray-200">📚 Save to my history</span>
+                        </label>
+                        <small class="block text-xs text-gray-400 ml-8">Keep a record of your created links (stored in browser)</small>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="form-group">
-            <div class="checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" name="require_click" checked>
-                    <span class="checkmark"></span>
-                    🛡️ Require click to reveal (recommended)
-                    <small>Hides content from web crawlers and requires user interaction</small>
-                </label>
-                
-                <label class="checkbox-label">
-                    <input type="checkbox" name="auto_delete">
-                    <span class="checkmark"></span>
-                    🗑️ Allow manual deletion after viewing
-                    <small>Adds a delete button when content is viewed (viewer can choose to delete)</small>
-                </label>
-                
-                <label class="checkbox-label">
-                    <input type="checkbox" name="track_history" id="track_history">
-                    <span class="checkmark"></span>
-                    📚 Save to my history
-                    <small>Keep a record of your created links (stored in browser)</small>
-                </label>
-            </div>
+        <!-- Action buttons -->
+        <div class="text-center pt-6 border-t border-gray-700">
+            <button type="submit" 
+                    class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50">
+                🔒 Create Secure Link
+            </button>
         </div>
-        
-        <button type="submit" class="btn btn-primary btn-large">
-            🔒 Create Secure Link
-        </button>
     </form>
     
-    <div class="info-section">
-        <h3>🔒 How it works:</h3>
-        <ul>
-            <li><strong>Encryption:</strong> Your text is encrypted before storage</li>
-            <li><strong>Automatic Expiry:</strong> Links expire after set time or view limit</li>
-            <li><strong>One-time Use:</strong> Optional auto-delete after viewing</li>
-            <li><strong>No Registration:</strong> No account required</li>
-            <li><strong>Browser History:</strong> Optionally track your links locally</li>
+    <div class="bg-gray-800 rounded-lg p-6 mb-8 max-w-4xl mx-auto border border-gray-700">
+        <h3 class="text-lg font-bold text-gray-200 mb-4">🔒 How it works:</h3>
+        <ul class="space-y-2 text-gray-300">
+            <li class="flex items-start space-x-2">
+                <span class="text-blue-400 font-bold">•</span>
+                <span><strong class="text-gray-200">Encryption:</strong> Do not remove <code>?k=...</code> from link, otherwise you cannot retrieve content.</span>
+            </li>
+            <li class="flex items-start space-x-2">
+                <span class="text-blue-400 font-bold">•</span>
+                <span><strong class="text-gray-200">Automatic Expiry:</strong> Links expire after set time or view limit is reached</span>
+            </li>
+            <li class="flex items-start space-x-2">
+                <span class="text-blue-400 font-bold">•</span>
+                <span><strong class="text-gray-200">One-time Use:</strong> Optional auto-delete after viewing with button click.</span>
+            </li>
+            <li class="flex items-start space-x-2">
+                <span class="text-blue-400 font-bold">•</span>
+                <span><strong class="text-gray-200">No Registration:</strong> No account required</span>
+            </li>
+            <li class="flex items-start space-x-2">
+                <span class="text-blue-400 font-bold">•</span>
+                <span><strong class="text-gray-200">Browser History:</strong> Optionally track your links locally, in web browser only.</span>
+            </li>
         </ul>
     </div>
     {{end}}
     
     <!-- History Section -->
-    <div class="history-section">
-        <div class="history-header">
-            <h2>📚 My Recent Links</h2>
-            <div class="history-controls">
-                <button onclick="refreshHistory()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
-                <button onclick="clearHistory()" class="btn btn-danger btn-sm">🗑️ Clear All</button>
+    <div class="bg-gray-800 rounded-lg p-6 max-w-6xl mx-auto border border-gray-700">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+            <h2 class="text-xl font-bold text-gray-200 mb-4 sm:mb-0">📚 My Recent Links</h2>
+            <div class="flex space-x-2">
+                <button onclick="refreshHistory()" 
+                        class="bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    🔄 Refresh
+                </button>
+                <button onclick="clearHistory()" 
+                        class="bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                    🗑️ Clear All
+                </button>
             </div>
         </div>
         
         <div id="historyContainer">
-            <div class="history-stats">
-                <span class="stat-badge">Total: <span id="totalCount">0</span></span>
-                <span class="stat-badge active">Active: <span id="activeCount">0</span></span>
-                <span class="stat-badge expired">Expired: <span id="expiredCount">0</span></span>
+            <div class="flex flex-wrap gap-4 mb-6">
+                <span class="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-sm">
+                    Total: <span id="totalCount" class="font-bold text-white">0</span>
+                </span>
+                <span class="bg-green-700 text-green-100 px-3 py-1 rounded-full text-sm">
+                    Active: <span id="activeCount" class="font-bold text-white">0</span>
+                </span>
+                <span class="bg-red-700 text-red-100 px-3 py-1 rounded-full text-sm">
+                    Expired: <span id="expiredCount" class="font-bold text-white">0</span>
+                </span>
             </div>
             
-            <div class="history-table-container">
-                <table id="historyTable" class="history-table">
-                    <thead>
+            <div class="overflow-x-auto">
+                <table id="historyTable" class="w-full text-sm text-gray-300">
+                    <thead class="bg-gray-900 text-gray-200 uppercase text-xs">
                         <tr>
-                            <th>📅 Created</th>
-                            <th>⏰ Expires</th>
-                            <th>�️ Views</th>
-                            <th>📝 Local Notes</th>
-                            <th>🔗 Status</th>
-                            <th>⚡ Actions</th>
+                            <th class="px-4 py-3 text-left">📅 Created</th>
+                            <th class="px-4 py-3 text-left">⏰ Expires</th>
+                            <th class="px-4 py-3 text-left">👁️ Views</th>
+                            <th class="px-4 py-3 text-left">📝 Local Notes</th>
+                            <th class="px-4 py-3 text-left">🔗 Status</th>
+                            <th class="px-4 py-3 text-left">⚡ Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="historyTableBody">
+                    <tbody id="historyTableBody" class="divide-y divide-gray-700">
                         <tr class="empty-row">
-                            <td colspan="6" class="empty-message">
+                            <td colspan="6" class="px-4 py-8 text-center text-gray-400">
                                 📭 No history found. Enable "Save to my history" when creating links.
                             </td>
                         </tr>
@@ -651,6 +245,21 @@ input, textarea {
 </div>
 
 <script>
+function toggleAdvancedSettings() {
+    const advancedSettings = document.getElementById('advancedSettings');
+    const toggleIcon = document.getElementById('advancedToggleIcon');
+    
+    if (advancedSettings.classList.contains('hidden')) {
+        advancedSettings.classList.remove('hidden');
+        toggleIcon.textContent = '▲';
+        toggleIcon.style.transform = 'rotate(180deg)';
+    } else {
+        advancedSettings.classList.add('hidden');
+        toggleIcon.textContent = '▼';
+        toggleIcon.style.transform = 'rotate(0deg)';
+    }
+}
+
 function updateExpiryDisplay(days) {
     const display = document.getElementById('expiryDisplay');
     if (days == 1) {
@@ -683,34 +292,81 @@ function updateViewsDisplay(views) {
 
 function copyToClipboard() {
     const urlInput = document.getElementById('pushUrl');
-    urlInput.select();
-    document.execCommand('copy');
-    
     const btn = document.querySelector('.copy-btn');
-    const originalText = btn.textContent;
-    btn.textContent = '✅ Copied!';
-    btn.style.background = '#4caf50';
     
-    setTimeout(() => {
-        btn.textContent = originalText;
-        btn.style.background = '';
-    }, 2000);
+    if (!urlInput) {
+        console.error('pushUrl input not found');
+        return;
+    }
+    
+    if (!btn) {
+        console.error('copy-btn button not found');
+        return;
+    }
+    
+    const originalText = btn.textContent;
+    
+    // Use modern clipboard API if available, fallback to execCommand
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(urlInput.value).then(() => {
+            btn.textContent = '✅ Copied!';
+            btn.style.background = '#4caf50';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            fallbackCopy();
+        });
+    } else {
+        fallbackCopy();
+    }
+    
+    function fallbackCopy() {
+        urlInput.select();
+        urlInput.setSelectionRange(0, 99999); // For mobile devices
+        
+        try {
+            document.execCommand('copy');
+            btn.textContent = '✅ Copied!';
+            btn.style.background = '#4caf50';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            btn.textContent = '❌ Failed';
+            btn.style.background = '#f44336';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }
+    }
 }
 
 // Save settings to cookies when form is submitted
-document.getElementById('pushForm').addEventListener('submit', function() {
-    const expiryDays = document.getElementById('expiry_days').value;
-    const maxViews = document.getElementById('max_views').value;
-    const requireClick = document.querySelector('input[name="require_click"]').checked;
-    const autoDelete = document.querySelector('input[name="auto_delete"]').checked;
-    const trackHistory = document.querySelector('input[name="track_history"]').checked;
-    
-    setCookie('pwpush_expiry_days', expiryDays, 30);
-    setCookie('pwpush_max_views', maxViews, 30);
-    setCookie('pwpush_require_click', requireClick, 30);
-    setCookie('pwpush_auto_delete', autoDelete, 30);
-    setCookie('pwpush_track_history', trackHistory, 30);
-});
+const pushForm = document.getElementById('pushForm');
+if (pushForm) {
+    pushForm.addEventListener('submit', function() {
+        const expiryDays = document.getElementById('expiry_days').value;
+        const maxViews = document.getElementById('max_views').value;
+        const requireClick = document.querySelector('input[name="require_click"]').checked;
+        const autoDelete = document.querySelector('input[name="auto_delete"]').checked;
+        const trackHistory = document.querySelector('input[name="track_history"]').checked;
+        
+        setCookie('pwpush_expiry_days', expiryDays, 30);
+        setCookie('pwpush_max_views', maxViews, 30);
+        setCookie('pwpush_require_click', requireClick, 30);
+        setCookie('pwpush_auto_delete', autoDelete, 30);
+        setCookie('pwpush_track_history', trackHistory, 30);
+    });
+}
 
 // History functionality
 function refreshHistory() {
@@ -788,7 +444,7 @@ function validateLinksWithServer(history) {
 function loadHistory() {
     let history = getHistoryFromCookie();
     
-    // Only validate if "track history" is enabled
+    // Always display existing history, but only validate with server if tracking is enabled
     const trackHistory = getCookie('pwpush_track_history');
     if (trackHistory === 'true' && history.length > 0) {
         // Validate with server and update display
@@ -801,6 +457,7 @@ function loadHistory() {
             displayHistory(history);
         });
     } else {
+        // Just display the history without server validation
         displayHistory(history);
     }
 }
@@ -809,6 +466,10 @@ function displayHistory(history) {
     const tbody = document.getElementById('historyTableBody');
     const emptyRow = tbody.querySelector('.empty-row');
     
+    // Always clear existing rows except empty row first
+    const existingRows = tbody.querySelectorAll('tr:not(.empty-row)');
+    existingRows.forEach(row => row.remove());
+    
     if (history.length === 0) {
         if (emptyRow) emptyRow.style.display = '';
         updateStats(0, 0, 0);
@@ -816,10 +477,6 @@ function displayHistory(history) {
     }
     
     if (emptyRow) emptyRow.style.display = 'none';
-    
-    // Clear existing rows except empty row
-    const existingRows = tbody.querySelectorAll('tr:not(.empty-row)');
-    existingRows.forEach(row => row.remove());
     
     let activeCount = 0;
     let expiredCount = 0;
@@ -860,7 +517,7 @@ function createHistoryRow(item, isExpired) {
     }
     
     // Always show remove button for cleaning up history
-    actions += `<button onclick="removeFromHistory('${item.id}')" class="btn btn-danger btn-xs" title="Remove">🗑️</button>`;
+    actions += `<button onclick="removeFromHistory('${item.id}')" class="btn btn-danger btn-xs" title="Remove from browser history(only)">🗑️</button>`;
     
     row.innerHTML = `
         <td class="date-cell">
@@ -954,17 +611,17 @@ function clearHistory() {
         // Clear the cookie
         document.cookie = "pwpush_history=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         
-        // Refresh the display and restore button
+        // Immediately update the display to show empty state
+        displayHistory([]);
+        
+        // Show success feedback
+        clearBtn.textContent = '✅ Cleared!';
+        
+        // Restore original text after showing success
         setTimeout(() => {
-            loadHistory(); // Refresh the display to show cleared state
-            clearBtn.textContent = '✅ Cleared!';
-            
-            // Restore original text after showing success
-            setTimeout(() => {
-                clearBtn.textContent = originalText;
-                clearBtn.disabled = false;
-            }, 1500);
-        }, 100);
+            clearBtn.textContent = originalText;
+            clearBtn.disabled = false;
+        }, 1500);
     }
 }
 
@@ -1003,8 +660,6 @@ function setCookie(name, value, days) {
 
 // Load history on page load
 document.addEventListener('DOMContentLoaded', function() {
-    loadHistory();
-    
     // Check if this is a success page with a new link created
     const successData = document.querySelector('meta[name="success-data"]');
     if (successData) {
@@ -1023,17 +678,24 @@ document.addEventListener('DOMContentLoaded', function() {
             };
             
             let history = getHistoryFromCookie();
-            history.unshift(newItem); // Add to beginning
             
-            // Keep only last 50 items
-            if (history.length > 50) {
-                history = history.slice(0, 50);
+            // Check if this item already exists to prevent duplicates
+            const existingIndex = history.findIndex(item => item.id === newItem.id);
+            if (existingIndex === -1) {
+                history.unshift(newItem); // Add to beginning only if it doesn't exist
+                
+                // Keep only last 50 items
+                if (history.length > 50) {
+                    history = history.slice(0, 50);
+                }
+                
+                saveHistoryToCookie(history);
             }
-            
-            saveHistoryToCookie(history);
-            loadHistory(); // Refresh the display
         }
     }
+    
+    // Load and display history (this will show the updated history including any new item)
+    loadHistory();
     
     // Load saved preferences
     const savedExpiry = getCookie('pwpush_expiry_days');
@@ -1042,26 +704,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedAutoDelete = getCookie('pwpush_auto_delete');
     const savedTrackHistory = getCookie('pwpush_track_history');
     
-    if (savedExpiry) {
-        document.getElementById('expiry_days').value = savedExpiry;
+    const expiryDaysElement = document.getElementById('expiry_days');
+    const maxViewsElement = document.getElementById('max_views');
+    const requireClickElement = document.querySelector('input[name="require_click"]');
+    const autoDeleteElement = document.querySelector('input[name="auto_delete"]');
+    const trackHistoryElement = document.querySelector('input[name="track_history"]');
+    
+    if (savedExpiry && expiryDaysElement) {
+        expiryDaysElement.value = savedExpiry;
         updateExpiryDisplay(savedExpiry);
     }
     
-    if (savedViews) {
-        document.getElementById('max_views').value = savedViews;
+    if (savedViews && maxViewsElement) {
+        maxViewsElement.value = savedViews;
         updateViewsDisplay(savedViews);
     }
     
-    if (savedRequireClick !== null) {
-        document.querySelector('input[name="require_click"]').checked = savedRequireClick === 'true';
+    if (savedRequireClick !== null && requireClickElement) {
+        requireClickElement.checked = savedRequireClick === 'true';
     }
     
-    if (savedAutoDelete !== null) {
-        document.querySelector('input[name="auto_delete"]').checked = savedAutoDelete === 'true';
+    if (savedAutoDelete !== null && autoDeleteElement) {
+        autoDeleteElement.checked = savedAutoDelete === 'true';
     }
     
-    if (savedTrackHistory !== null) {
-        document.querySelector('input[name="track_history"]').checked = savedTrackHistory === 'true';
+    if (savedTrackHistory !== null && trackHistoryElement) {
+        trackHistoryElement.checked = savedTrackHistory === 'true';
     }
 });
 </script>

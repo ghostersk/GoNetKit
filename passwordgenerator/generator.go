@@ -18,6 +18,7 @@ type Config struct {
 	IncludeLower         bool   `json:"includeLower"`
 	NumberCount          int    `json:"numberCount"`
 	SpecialChars         string `json:"specialChars"`
+	MinSpecialChars      int    `json:"minSpecialChars"`
 	NoConsecutive        bool   `json:"noConsecutive"`
 	UsePassphrase        bool   `json:"usePassphrase"`
 	WordCount            int    `json:"wordCount"`
@@ -232,8 +233,9 @@ func DefaultConfig() Config {
 		IncludeUpper:         true,
 		IncludeLower:         true,
 		NumberCount:          1,
-		SpecialChars:         "!@#$%^&*-_=+",
-		NoConsecutive:        false,
+		SpecialChars:         "!@#$%&*-_=+.",
+		MinSpecialChars:      3,
+		NoConsecutive:        true,
 		UsePassphrase:        true, // Default to passphrase
 		WordCount:            3,
 		NumberPosition:       "end",
@@ -279,6 +281,18 @@ func generateRandomPassword(config Config) (string, error) {
 		return "", fmt.Errorf("no character types selected")
 	}
 
+	// Validate that minimum special characters doesn't exceed password length
+	totalRequired := config.NumberCount + config.MinSpecialChars
+	if config.IncludeLower {
+		totalRequired++
+	}
+	if config.IncludeUpper {
+		totalRequired++
+	}
+	if totalRequired > config.Length {
+		return "", fmt.Errorf("password length too short for required character counts")
+	}
+
 	password := make([]byte, config.Length)
 
 	// Ensure at least one character from each required set
@@ -304,10 +318,50 @@ func generateRandomPassword(config Config) (string, error) {
 		}
 	}
 
-	// Then place at least one from each other required character set
+	// Place required special characters
+	specialCharsPlaced := 0
+	if config.MinSpecialChars > 0 && len(config.SpecialChars) > 0 {
+		attempts := 0
+		maxAttempts := config.Length * 10 // Prevent infinite loops
+		for specialCharsPlaced < config.MinSpecialChars && attempts < maxAttempts {
+			pos, err := rand.Int(rand.Reader, big.NewInt(int64(config.Length)))
+			if err != nil {
+				return "", err
+			}
+			posInt := int(pos.Int64())
+
+			if !usedPositions[posInt] {
+				char, err := rand.Int(rand.Reader, big.NewInt(int64(len(config.SpecialChars))))
+				if err != nil {
+					return "", err
+				}
+				password[posInt] = config.SpecialChars[char.Int64()]
+				usedPositions[posInt] = true
+				specialCharsPlaced++
+			}
+			attempts++
+		}
+
+		// If we couldn't place enough special characters due to bad luck, force placement
+		if specialCharsPlaced < config.MinSpecialChars {
+			for i := 0; i < config.Length && specialCharsPlaced < config.MinSpecialChars; i++ {
+				if !usedPositions[i] {
+					char, err := rand.Int(rand.Reader, big.NewInt(int64(len(config.SpecialChars))))
+					if err != nil {
+						return "", err
+					}
+					password[i] = config.SpecialChars[char.Int64()]
+					usedPositions[i] = true
+					specialCharsPlaced++
+				}
+			}
+		}
+	}
+
+	// Then place at least one from each other required character set (excluding numbers and special chars already handled)
 	for _, reqSet := range required {
-		if reqSet == "0123456789" {
-			continue // Already handled numbers
+		if reqSet == "0123456789" || reqSet == config.SpecialChars {
+			continue // Already handled numbers and special chars
 		}
 
 		placed := false
@@ -344,11 +398,60 @@ func generateRandomPassword(config Config) (string, error) {
 	}
 
 	// Handle no consecutive characters requirement
+	finalPassword := string(password)
 	if config.NoConsecutive {
-		return ensureNoConsecutive(string(password), charset)
-	}
+		finalPassword, err := ensureNoConsecutive(string(password), charset)
+		if err != nil {
+			return "", err
+		}
 
-	return string(password), nil
+		// After ensureNoConsecutive, we need to verify minimum requirements are still met
+		// and fix them if necessary
+		if config.MinSpecialChars > 0 && len(config.SpecialChars) > 0 {
+			// Count current special characters
+			currentSpecialCount := 0
+			for _, char := range finalPassword {
+				if strings.ContainsRune(config.SpecialChars, char) {
+					currentSpecialCount++
+				}
+			}
+
+			// If we don't have enough special characters, replace some non-special characters
+			if currentSpecialCount < config.MinSpecialChars {
+				passwordRunes := []rune(finalPassword)
+				needed := config.MinSpecialChars - currentSpecialCount
+
+				for i := 0; i < len(passwordRunes) && needed > 0; i++ {
+					// Find non-special characters that can be replaced
+					if !strings.ContainsRune(config.SpecialChars, passwordRunes[i]) {
+						// Make sure this replacement won't create consecutive characters
+						specialChar, err := rand.Int(rand.Reader, big.NewInt(int64(len(config.SpecialChars))))
+						if err != nil {
+							return "", err
+						}
+						newChar := rune(config.SpecialChars[specialChar.Int64()])
+
+						// Check if this would create consecutive characters
+						wouldCreateConsecutive := false
+						if i > 0 && passwordRunes[i-1] == newChar {
+							wouldCreateConsecutive = true
+						}
+						if i < len(passwordRunes)-1 && passwordRunes[i+1] == newChar {
+							wouldCreateConsecutive = true
+						}
+
+						if !wouldCreateConsecutive {
+							passwordRunes[i] = newChar
+							needed--
+						}
+					}
+				}
+				finalPassword = string(passwordRunes)
+			}
+		}
+		return finalPassword, nil
+	}
+	return finalPassword, nil
 }
 
 func generatePassphrase(config Config) (string, error) {

@@ -3,6 +3,7 @@ package passwordgenerator
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"headeranalyzer/security"
 )
@@ -17,17 +18,18 @@ func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var requestData struct {
-		Type           string `json:"type"`
-		Length         int    `json:"length"`
-		IncludeUpper   bool   `json:"includeUpper"`
-		IncludeLower   bool   `json:"includeLower"`
-		NumberCount    int    `json:"numberCount"`
-		SpecialChars   string `json:"specialChars"`
-		NoConsecutive  bool   `json:"noConsecutive"`
-		WordCount      int    `json:"wordCount"`
-		NumberPosition string `json:"numberPosition"`
-		UseNumbers     bool   `json:"useNumbers"`
-		UseSpecial     bool   `json:"useSpecial"`
+		Type            string `json:"type"`
+		Length          int    `json:"length"`
+		IncludeUpper    bool   `json:"includeUpper"`
+		IncludeLower    bool   `json:"includeLower"`
+		NumberCount     int    `json:"numberCount"`
+		SpecialChars    string `json:"specialChars"`
+		MinSpecialChars int    `json:"minSpecialChars"`
+		NoConsecutive   bool   `json:"noConsecutive"`
+		WordCount       int    `json:"wordCount"`
+		NumberPosition  string `json:"numberPosition"`
+		UseNumbers      bool   `json:"useNumbers"`
+		UseSpecial      bool   `json:"useSpecial"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
@@ -46,6 +48,12 @@ func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
 	if requestData.NumberCount < 0 || requestData.NumberCount > 20 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Number count must be between 0 and 20"))
+		return
+	}
+
+	if requestData.MinSpecialChars < 0 || requestData.MinSpecialChars > 20 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Minimum special characters count must be between 0 and 20"))
 		return
 	}
 
@@ -72,8 +80,17 @@ func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
 		requestData.NumberPosition = "end" // Default
 	}
 
-	// Sanitize special characters to prevent potential issues
-	requestData.SpecialChars = validator.SanitizeHTML(requestData.SpecialChars)
+	// Validate special characters - only allow specific safe characters
+	if len(requestData.SpecialChars) > 0 {
+		allowedSpecialChars := "!@#$%&*-_=+."
+		for _, char := range requestData.SpecialChars {
+			if !strings.ContainsRune(allowedSpecialChars, char) {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("Special characters must only contain: !@#$%&*-_=+."))
+				return
+			}
+		}
+	}
 
 	// Convert to internal Config format
 	config := Config{
@@ -82,6 +99,7 @@ func PasswordAPIHandler(w http.ResponseWriter, r *http.Request) {
 		IncludeLower:         requestData.IncludeLower,
 		NumberCount:          requestData.NumberCount,
 		SpecialChars:         requestData.SpecialChars,
+		MinSpecialChars:      requestData.MinSpecialChars,
 		NoConsecutive:        requestData.NoConsecutive,
 		UsePassphrase:        requestData.Type == "passphrase",
 		WordCount:            requestData.WordCount,

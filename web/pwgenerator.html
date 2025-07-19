@@ -1,0 +1,774 @@
+{{template "base.html" .}}
+
+{{define "title"}}Password Generator - HeaderAnalyzer{{end}}
+
+{{define "content"}}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <div class="text-center mb-8">
+        <a href="/pwgenerator" class="inline-block">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-100 hover:text-blue-400 transition-colors cursor-pointer mb-4">
+                🔐 Password Generator
+            </h1>
+        </a>
+    </div>    
+    <!-- Hidden CSRF token for API calls -->
+    <input type="hidden" id="csrfToken" value="{{.CSRFToken}}">
+    
+    <!-- Tab Buttons -->
+    <div class="flex space-x-2 mb-6 bg-gray-800 p-2 rounded-lg border border-gray-700">
+        <button class="flex-1 py-3 px-4 rounded-lg text-center font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600" id="randomTab">
+            🎲 Random Password
+        </button>
+        <button class="flex-1 py-3 px-4 rounded-lg text-center font-medium transition-colors bg-blue-600 text-white" id="passphraseTab">
+            📝 Passphrase
+        </button>
+    </div>
+
+    <!-- Password Output -->
+        <!-- Generated Password Display -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <h2 class="text-xl font-semibold text-gray-200">🔐 Generated Password</h2>
+            <div class="flex items-center gap-4 text-sm">
+                <span id="characterCount" class="text-gray-400 bg-gray-700 px-3 py-1 rounded-full">
+                    0 characters
+                </span>
+            </div>
+        </div>
+        
+        <div class="relative">
+            <input type="text" id="generatedPassword" readonly 
+                   class="w-full p-4 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   placeholder="Click 'Generate Password' to create a new password">
+            <button onclick="copyPassword()" 
+                    class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                📋 Copy
+            </button>
+        </div>
+    </div>
+
+    <!-- Generate Button -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <button onclick="generatePassword()" 
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all duration-200 transform hover:scale-105">
+            🎲 Generate Password
+        </button>
+        <button onclick="copyCurrentURL()" 
+                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-6 rounded-lg transition-colors duration-200">
+            🔗 Copy URL with Settings
+        </button>
+        <button onclick="resetAllSettings()" 
+                class="bg-red-600 hover:bg-red-700 text-white font-medium py-4 px-6 rounded-lg transition-colors duration-200">
+            🔄 Reset
+        </button>
+    </div>
+
+    <!-- Settings -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
+        <div class="flex items-center justify-between mb-4 cursor-pointer" onclick="toggleSettings()">
+            <h3 class="text-xl font-semibold text-gray-200">🔧 Password Settings</h3>
+            <div class="flex items-center space-x-2">
+                <span id="settingsToggleText" class="text-sm text-gray-400">Click to expand</span>
+                <svg id="settingsChevron" class="w-5 h-5 text-gray-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div id="settingsContent" class="hidden">
+            <!-- Save Passwords Option -->
+            <div class="p-3 bg-gray-900 rounded-lg border border-gray-600 mb-6">
+                <div class="flex items-center space-x-3">
+                    <input type="checkbox" id="savePasswords" onchange="togglePasswordSaving(); autoSaveSettings()"
+                           class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                    <label for="savePasswords" class="text-sm text-gray-300">
+                        Save Generated Passwords (in web browser cookies only)
+                    </label>
+                </div>
+            </div>
+
+            <!-- Settings Table -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column: Basic Password Settings -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-medium text-gray-200 mb-4 border-b border-gray-600 pb-2">🎲 Random Password Settings</h4>
+                    
+                    <div>
+                        <label for="length" class="block text-sm font-medium text-gray-300 mb-2">Password Length:</label>
+                        <input type="number" id="length" min="4" max="128" value="{{.Config.Length}}" onchange="updateURL(); autoSaveSettings()"
+                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="includeUpper" {{if .Config.IncludeUpper}}checked{{end}} onchange="updateURL(); autoSaveSettings()"
+                               class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                        <label for="includeUpper" class="text-sm text-gray-300">Include Uppercase (A-Z)</label>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="includeLower" {{if .Config.IncludeLower}}checked{{end}} onchange="updateURL(); autoSaveSettings()"
+                               class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                        <label for="includeLower" class="text-sm text-gray-300">Include Lowercase (a-z)</label>
+                    </div>
+                    
+                    <div>
+                        <label for="numberCount" class="block text-sm font-medium text-gray-300 mb-2">Number of Digits:</label>
+                        <input type="number" id="numberCount" min="0" max="20" value="{{.Config.NumberCount}}" onchange="updateURL(); autoSaveSettings()"
+                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                    </div>
+                    
+                    <div>
+                        <label for="specialChars" class="block text-sm font-medium text-gray-300 mb-2">Special Characters:</label>
+                        <input type="text" id="specialChars" value="{{.Config.SpecialChars}}" 
+                               onchange="validateSpecialChars(); updateURL(); autoSaveSettings()" 
+                               oninput="validateSpecialChars()"
+                               pattern="[!@#$%&*\-_=+.]*"
+                               title="Only these special characters are allowed: !@#$%&*-_=+."
+                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 font-mono focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                        <div id="specialCharsError" class="text-red-400 text-sm mt-1 hidden">
+                            Only these special characters are allowed: !@#$%&*-_=+.
+                        </div>
+                        <div class="text-gray-500 text-xs mt-1">
+                            Allowed: !@#$%&*-_=+.
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label for="minSpecialChars" class="block text-sm font-medium text-gray-300 mb-2">Minimum Special Characters:</label>
+                        <input type="number" id="minSpecialChars" min="0" max="10" value="{{.Config.MinSpecialChars}}" 
+                               onchange="updateURL(); autoSaveSettings()"
+                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                        <div class="text-gray-500 text-xs mt-1">
+                            Minimum number of special characters to include in random passwords
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="noConsecutive" {{if .Config.NoConsecutive}}checked{{end}} onchange="updateURL(); autoSaveSettings()"
+                               class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                        <label for="noConsecutive" class="text-sm text-gray-300">No consecutive identical characters</label>
+                    </div>
+                </div>
+
+                <!-- Right Column: Passphrase Settings -->
+                <div class="space-y-4">
+                    <h4 class="text-lg font-medium text-gray-200 mb-4 border-b border-gray-600 pb-2">📝 Passphrase Options</h4>
+                    
+                    <div id="passphraseControls">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="wordCount" class="block text-sm font-medium text-gray-300 mb-2">Number of Words:</label>
+                                <input type="number" id="wordCount" min="2" max="10" value="{{.Config.WordCount}}" onchange="updateURL(); autoSaveSettings()"
+                                       class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                            </div>
+                            
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="passphraseUseNumbers" {{if .Config.UseNumbers}}checked{{end}} onchange="updateURL(); autoSaveSettings()"
+                                       class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                <label for="passphraseUseNumbers" class="text-sm text-gray-300">Include Numbers</label>
+                            </div>
+                            
+                            <div class="flex items-center space-x-3">
+                                <input type="checkbox" id="passphraseUseSpecial" {{if .Config.UseSpecial}}checked{{end}} onchange="updateURL(); autoSaveSettings()"
+                                       class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                <label for="passphraseUseSpecial" class="text-sm text-gray-300">Include Special Characters</label>
+                            </div>
+                            
+                            <div>
+                                <label for="numberPosition" class="block text-sm font-medium text-gray-300 mb-2">Number Position:</label>
+                                <select id="numberPosition" onchange="updateURL(); autoSaveSettings()"
+                                        class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                                    <option value="end" {{if eq .Config.NumberPosition "end"}}selected{{end}}>At End</option>
+                                    <option value="start" {{if eq .Config.NumberPosition "start"}}selected{{end}}>At Start</option>
+                                    <option value="each" {{if eq .Config.NumberPosition "each"}}selected{{end}}>After Each Word</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Password History -->
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mt-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-gray-200">📚 Password History</h3>
+            <button onclick="clearHistory()" 
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500/20">
+                🗑️ Clear History
+            </button>
+        </div>
+        
+        <div id="passwordHistory" class="bg-gray-900 border border-gray-600 rounded-lg p-4">
+            <p class="text-gray-400 italic">No passwords generated yet</p>
+        </div>
+    </div>
+</div>
+{{end}}  
+    </div>
+</div>
+
+{{define "scripts"}}
+<script>
+let currentMode = 'passphrase'; // Default to passphrase
+
+// Initialize the interface based on saved settings or URL parameters
+document.addEventListener('DOMContentLoaded', function() {
+    // Load settings first (from URL parameters or cookies)
+    loadSettings();
+    
+    // Update URL to reflect current state
+    updateURL();
+    
+    // Load password history
+    loadPasswordHistory();
+    
+    // Auto-generate if URL has parameters (excluding default)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString()) {
+        generatePassword();
+    }
+    
+    // Note: Removed auto-save event listeners to prevent excessive saving notifications
+});
+
+// Tab switching
+function switchTab(mode) {
+    currentMode = mode;
+    
+    // Get tab elements
+    const randomTab = document.getElementById('randomTab');
+    const passphraseTab = document.getElementById('passphraseTab');
+    
+    // Remove active classes from both tabs
+    randomTab.classList.remove('bg-blue-600', 'text-white');
+    randomTab.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+    
+    passphraseTab.classList.remove('bg-blue-600', 'text-white');
+    passphraseTab.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+    
+    // Add active classes to the selected tab
+    if (mode === 'random') {
+        randomTab.classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+        randomTab.classList.add('bg-blue-600', 'text-white');
+    } else {
+        passphraseTab.classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-600');
+        passphraseTab.classList.add('bg-blue-600', 'text-white');
+    }
+    
+    updateURL();
+    autoSaveSettings(); // Auto-save without notification
+}
+
+document.getElementById('randomTab').addEventListener('click', () => switchTab('random'));
+document.getElementById('passphraseTab').addEventListener('click', () => switchTab('passphrase'));
+
+// Toggle settings section
+function toggleSettings() {
+    const content = document.getElementById('settingsContent');
+    const chevron = document.getElementById('settingsChevron');
+    const toggleText = document.getElementById('settingsToggleText');
+    
+    if (content.classList.contains('hidden')) {
+        // Expand
+        content.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+        toggleText.textContent = 'Click to minimize';
+    } else {
+        // Collapse
+        content.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+        toggleText.textContent = 'Click to expand';
+    }
+}
+
+// Validate special characters input
+function validateSpecialChars() {
+    const input = document.getElementById('specialChars');
+    const errorDiv = document.getElementById('specialCharsError');
+    const allowedChars = '!@#$%&*-_=+.';
+    const value = input.value;
+    
+    let isValid = true;
+    for (let i = 0; i < value.length; i++) {
+        if (!allowedChars.includes(value[i])) {
+            isValid = false;
+            break;
+        }
+    }
+    
+    if (isValid) {
+        input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-500/20');
+        input.classList.add('border-gray-600', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+        errorDiv.classList.add('hidden');
+    } else {
+        input.classList.remove('border-gray-600', 'focus:border-blue-500', 'focus:ring-blue-500/20');
+        input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-500/20');
+        errorDiv.classList.remove('hidden');
+    }
+    
+    return isValid;
+}
+
+// URL parameter management
+function updateURL() {
+    const config = getCurrentConfig();
+    const params = new URLSearchParams();
+    
+    // Define default values
+    const defaults = {
+        type: "passphrase",
+        length: 12,
+        includeUpper: true,
+        includeLower: true,
+        numberCount: 2,
+        specialChars: "!@#$%&*-_=+.",
+        minSpecialChars: 3,
+        noConsecutive: true,
+        wordCount: 3,
+        useNumbers: true,
+        useSpecial: false,
+        numberPosition: "end"
+    };
+    Object.keys(config).forEach(key => {
+        if (key !== 'savePasswords' && config[key] !== defaults[key]) {
+            params.set(key, config[key]);
+        }
+    });
+    
+    // Update the URL without causing a page reload
+    const queryString = params.toString();
+    const newURL = queryString ? window.location.pathname + '?' + queryString : window.location.pathname;
+    window.history.replaceState({}, '', newURL);
+}
+
+function getCurrentConfig() {
+    return {
+        type: currentMode,
+        length: parseInt(document.getElementById('length').value),
+        includeUpper: document.getElementById('includeUpper').checked,
+        includeLower: document.getElementById('includeLower').checked,
+        numberCount: parseInt(document.getElementById('numberCount').value),
+        specialChars: document.getElementById('specialChars').value,
+        minSpecialChars: parseInt(document.getElementById('minSpecialChars').value),
+        noConsecutive: document.getElementById('noConsecutive').checked,
+        wordCount: parseInt(document.getElementById('wordCount').value),
+        useNumbers: document.getElementById('passphraseUseNumbers').checked,
+        useSpecial: document.getElementById('passphraseUseSpecial').checked,
+        numberPosition: document.getElementById('numberPosition').value,
+        savePasswords: document.getElementById('savePasswords').checked
+    };
+}
+
+// Cookie management
+function saveSettings() {
+    const config = getCurrentConfig();
+    config.mode = currentMode;
+    const settings = JSON.stringify(config);
+    
+    // Set cookie to expire in 1 year
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    
+    document.cookie = `passwordGenSettings=${encodeURIComponent(settings)}; expires=${expiryDate.toUTCString()}; path=/`;
+    
+    showNotification('Settings saved! They will be remembered when you visit this page again.', 'success');
+}
+
+// Auto-save function without showing notification
+function autoSaveSettings() {
+    const config = getCurrentConfig();
+    config.mode = currentMode;
+    const settings = JSON.stringify(config);
+    
+    // Set cookie to expire in 1 year
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+    
+    document.cookie = `passwordGenSettings=${encodeURIComponent(settings)}; expires=${expiryDate.toUTCString()}; path=/`;
+}
+
+// Copy current URL with settings
+function copyCurrentURL() {
+    updateURL(); // Ensure URL is up to date
+    const currentURL = window.location.href;
+    
+    navigator.clipboard.writeText(currentURL).then(function() {
+        showPopup('URL with current settings copied to clipboard!', 'success');
+    }, function(err) {
+        console.error('Could not copy URL: ', err);
+        showPopup('Failed to copy URL to clipboard', 'error');
+    });
+}
+
+// Reset all settings and cookies
+function resetAllSettings() {
+    showConfirmationPopup(
+        'Reset All Settings?',
+        'This will clear all saved settings and password history, returning the page to its default state.',
+        function() {
+            // Clear all cookies
+            document.cookie = 'passwordGenSettings=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            document.cookie = 'passwordHistory=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
+            showPopup('All settings and history cleared. Redirecting to clean page...', 'info');
+            
+            setTimeout(() => {
+                // Redirect to the page without any parameters
+                window.location.href = window.location.pathname;
+            }, 1500);
+        }
+    );
+}
+
+function loadSettings() {
+    // First try URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.toString()) {
+        const config = {};
+        for (const [key, value] of urlParams) {
+            // Explicitly exclude savePasswords from URL parameter processing
+            if (key === 'savePasswords') {
+                continue; // Skip this parameter completely
+            }
+            else if (key === 'type') config[key] = value;
+            else if (key === 'length' || key === 'numberCount' || key === 'wordCount' || key === 'minSpecialChars') config[key] = parseInt(value);
+            else if (key === 'includeUpper' || key === 'includeLower' || key === 'noConsecutive' || 
+                     key === 'useNumbers' || key === 'useSpecial') config[key] = value === 'true';
+            else config[key] = value;
+        }
+        applyConfig(config);
+        
+        // Load savePasswords setting separately from cookies only
+        loadSavePasswordsSetting();
+        return;
+    }
+
+    // Then try cookies
+    const settings = getCookie('passwordGenSettings');
+    if (settings) {
+        try {
+            const config = JSON.parse(decodeURIComponent(settings));
+            applyConfig(config);
+        } catch (e) {
+            console.error('Failed to parse saved settings:', e);
+        }
+    }
+
+}
+
+// Load savePasswords setting from cookies only (never from URL)
+function loadSavePasswordsSetting() {
+    const settings = getCookie('passwordGenSettings');
+    
+    if (settings) {
+        try {
+            const config = JSON.parse(decodeURIComponent(settings));
+           
+            if (config.savePasswords !== undefined) {
+                document.getElementById('savePasswords').checked = config.savePasswords;
+  
+                // Update history display based on the setting
+                if (config.savePasswords) {
+                    const history = getPasswordHistory();
+                    displayPasswordHistory(history);
+                } else {
+                    document.getElementById('passwordHistory').innerHTML = '<p style="color: #999; font-style: italic;">Password saving is disabled</p>';
+                }
+            } 
+        } catch (e) {
+            console.error('Failed to parse saved settings for savePasswords:', e);
+        }
+    }
+}
+
+
+// Custom confirmation popup function
+function showConfirmationPopup(title, message, onConfirm) {
+    // Create backdrop
+    const backdrop = document.createElement('div');
+    backdrop.className = 'fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4';
+    
+    // Create popup
+    backdrop.innerHTML = `
+        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-red-400">${title}</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-200 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <p class="text-gray-300 mb-6">${message}</p>
+            
+            <div class="flex space-x-3 justify-end">
+                <button onclick="this.closest('.fixed').remove()" 
+                        class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors">
+                    Cancel
+                </button>
+                <button onclick="confirmAction()" 
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                    Yes, Clear All
+                </button>
+            </div>
+        </div>
+    `;
+    
+    // Add confirm action to the backdrop element
+    backdrop.confirmCallback = onConfirm;
+    
+    // Add global confirmAction function temporarily
+    window.confirmAction = function() {
+        backdrop.confirmCallback();
+        backdrop.remove();
+        delete window.confirmAction;
+    };
+    
+    // Add to page
+    document.body.appendChild(backdrop);
+    
+    // Close on backdrop click
+    backdrop.addEventListener('click', function(e) {
+        if (e.target === backdrop) {
+            backdrop.remove();
+            delete window.confirmAction;
+        }
+    });
+}
+
+function applyConfig(config) {
+    // Apply the configuration to form controls
+    currentMode = config.type || config.mode || 'passphrase';
+    
+    document.getElementById('length').value = config.length || 12;
+    document.getElementById('includeUpper').checked = config.includeUpper !== false;
+    document.getElementById('includeLower').checked = config.includeLower !== false;
+    document.getElementById('numberCount').value = config.numberCount || 2;
+    document.getElementById('specialChars').value = config.specialChars || "!@#$%&*-_=+.";
+    document.getElementById('minSpecialChars').value = config.minSpecialChars || 3;
+    document.getElementById('noConsecutive').checked = config.noConsecutive || true;
+    document.getElementById('wordCount').value = config.wordCount || 3;
+    document.getElementById('passphraseUseNumbers').checked = config.useNumbers !== false;
+    document.getElementById('passphraseUseSpecial').checked = config.useSpecial || false;
+    document.getElementById('numberPosition').value = config.numberPosition || "end";
+    document.getElementById('savePasswords').checked = config.savePasswords || false;
+    
+    // Update tab state using the switchTab function to ensure proper styling
+    switchTab(currentMode);
+}
+
+// Password history management
+function addToHistory(password) {
+    // Check if password saving is enabled
+    const savePasswords = document.getElementById('savePasswords').checked;
+    if (!savePasswords) {
+        return; // Don't save if checkbox is unchecked
+    }
+    
+    let history = getPasswordHistory();
+    const timestamp = new Date().toLocaleString();
+    const entry = { password, timestamp, type: currentMode };
+    
+    // Add to beginning of array
+    history.unshift(entry);
+    
+    // Keep only last 20 passwords
+    if (history.length > 20) {
+        history = history.slice(0, 20);
+    }
+    
+    // Save to cookie
+    const historyData = JSON.stringify(history);
+    const expiryDate = new Date();
+    expiryDate.setMonth(expiryDate.getMonth() + 3); // 3 months
+    
+    document.cookie = `passwordHistory=${encodeURIComponent(historyData)}; expires=${expiryDate.toUTCString()}; path=/`;
+    
+    // Update display
+    displayPasswordHistory(history);
+}
+
+function getPasswordHistory() {
+    const historyData = getCookie('passwordHistory');
+    if (historyData) {
+        try {
+            return JSON.parse(decodeURIComponent(historyData));
+        } catch (e) {
+            return [];
+        }
+    }
+    return [];
+}
+
+function loadPasswordHistory() {
+    const savePasswords = document.getElementById('savePasswords').checked;
+    
+    if (savePasswords) {
+        const history = getPasswordHistory();
+        displayPasswordHistory(history);
+    } else {
+        const historyDiv = document.getElementById('passwordHistory');
+        historyDiv.innerHTML = '<p style="color: #999; font-style: italic;">Password saving is disabled</p>';
+    }
+}
+
+function togglePasswordSaving() {
+    const savePasswords = document.getElementById('savePasswords').checked;
+    
+    const historyDiv = document.getElementById('passwordHistory');
+    const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+    
+    if (savePasswords) {
+        // Re-display existing history
+        const history = getPasswordHistory();
+        displayPasswordHistory(history);
+        showNotification('Password saving enabled', 'success');
+        
+        // Show View History button if there's a password displayed
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        if (passwordDisplay && passwordDisplay.textContent && passwordDisplay.textContent !== 'Click "Generate Password" to create a secure password') {
+            if (viewHistoryBtn) viewHistoryBtn.style.display = 'inline-block';
+        }
+    } else {
+        // Clear stored passwords and hide history display
+        document.cookie = 'passwordHistory=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        historyDiv.innerHTML = '<p style="color: #999; font-style: italic;">Password saving is disabled</p>';
+        showNotification('Password saving disabled - history cleared', 'info');
+        
+        // Hide View History button
+        if (viewHistoryBtn) viewHistoryBtn.style.display = 'none';
+    }
+    
+    // Auto-save the setting change without notification
+    autoSaveSettings();
+}
+
+function displayPasswordHistory(history) {
+    const historyDiv = document.getElementById('passwordHistory');
+    
+    if (history.length === 0) {
+        historyDiv.innerHTML = '<p style="color: #999; font-style: italic;">No passwords generated yet</p>';
+        return;
+    }
+    
+    let html = '';
+    history.forEach((entry, index) => {
+        const shortPassword = entry.password.length > 30 ? entry.password.substring(0, 30) + '...' : entry.password;
+        html += `
+            <div style="margin-bottom: 10px; padding: 8px; background: #2a2a2a; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="flex: 1;">
+                    <div style="font-family: monospace; color: #00ff88; margin-bottom: 2px;">${shortPassword}</div>
+                    <div style="font-size: 12px; color: #999;">${entry.type} • ${entry.timestamp}</div>
+                </div>
+                <button onclick="copyHistoryPassword('${entry.password.replace(/'/g, "\\'")}', ${index})" 
+                        style="background: #007acc; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; margin-left: 10px;">
+                    Copy
+                </button>
+            </div>
+        `;
+    });
+    
+    historyDiv.innerHTML = html;
+}
+
+function copyHistoryPassword(password, index) {
+    navigator.clipboard.writeText(password).then(function() {
+        // Temporarily change button text
+        const buttons = document.querySelectorAll('#passwordHistory button');
+        if (buttons[index]) {
+            const originalText = buttons[index].textContent;
+            buttons[index].textContent = 'Copied!';
+            buttons[index].style.background = '#00aa44';
+            setTimeout(function() {
+                buttons[index].textContent = originalText;
+                buttons[index].style.background = '#007acc';
+            }, 1500);
+        }
+    });
+}
+
+function clearHistory() {
+    showConfirmationPopup(
+        'Clear Password History?',
+        'This will permanently delete all saved passwords from your browser. This action cannot be undone.',
+        function() {
+            // User confirmed
+            document.cookie = 'passwordHistory=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            loadPasswordHistory();
+            showPopup('Password history cleared.', 'info');
+        }
+    );
+}
+
+// Utility function to get cookie value
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+}
+
+function generatePassword() {
+    // Validate special characters before generating
+    if (!validateSpecialChars()) {
+        showNotification('Please fix special characters field before generating password', 'error');
+        return;
+    }
+    
+    const config = getCurrentConfig();
+
+    fetch('/api/pwgenerator', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config)
+    })
+    .then(response => response.text())
+    .then(password => {
+        document.getElementById('generatedPassword').value = password;
+        
+        // Update character count
+        document.getElementById('characterCount').textContent = `${password.length} characters`;
+        
+        // Add to history
+        addToHistory(password);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('generatedPassword').value = 'Error generating password';
+        document.getElementById('characterCount').textContent = '0 characters';
+    });
+}
+
+function copyPassword() {
+    const password = document.getElementById('generatedPassword').value;
+    if (password && password !== 'Click \'Generate Password\' to create a new password') {
+        navigator.clipboard.writeText(password).then(function() {
+            showNotification('Password copied to clipboard!', 'success');
+        }, function(err) {
+            console.error('Could not copy text: ', err);
+            showNotification('Failed to copy password', 'error');
+        });
+    }
+}
+
+function scrollToHistory() {
+    const historyElement = document.getElementById('passwordHistory');
+    if (historyElement) {
+        historyElement.scrollIntoView({ 
+            behavior: 'smooth',
+            block: 'start'
+        });
+    }
+}
+
+// Use the showPopup function from base.html instead of custom notifications
+function showNotification(message, type = 'info') {
+    showPopup(message, type);
+}
+</script>
+{{end}}

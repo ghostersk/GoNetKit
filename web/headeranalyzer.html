@@ -9,312 +9,547 @@
 {{end}}
 
 {{define "content"}}
-<div class="container">
-        <h1>Email Header Analyzer</h1>
-        {{if not .From}}
-        <form method="POST">
+<div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="text-center mb-8">
+        <a href="/analyze" class="inline-block">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-100 hover:text-blue-400 transition-colors cursor-pointer mb-4">
+                📧 Email Header Analyzer
+            </h1>
+        </a>
+    </div>
+    
+    {{if not .From}}
+    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 max-w-4xl mx-auto">
+        <form method="POST" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-            <textarea name="headers" placeholder="Paste email headers here..." required></textarea>
-            <br>
-            <button type="submit">Analyze Headers</button>
+            <div>
+                <label class="block text-sm font-medium text-gray-200 mb-2">📝 Email Headers:</label>
+                <textarea name="headers" 
+                          placeholder="Paste email headers here..." 
+                          required
+                          rows="12"
+                          class="w-full p-4 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 font-mono text-sm placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-y"></textarea>
+            </div>
+            <div class="text-center">
+                <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-3 rounded-lg transition-colors">
+                    🔍 Analyze Headers
+                </button>
+            </div>
         </form>
-        {{end}}
+    </div>
+    {{end}}
 
         {{if .From}}
-    <div id="report" class="container">
-        <div class="section" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 30px;">
-            <div style="flex: 1 1 0; min-width: 0;">
-                <h2>Sender Identification</h2>
-                <div class="grid">
+    <div id="report" class="space-y-6">
+        <!-- Sender Identification -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">👤 Sender Identification</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="space-y-3">
                     <div>
-                        <p><b>Envelope Sender (Return-Path):</b> {{.EnvelopeSender}}</p>
-                        <p><b>From Domain:</b> {{.FromDomain}}</p>
-                        <p><b>Sending Server:</b> {{.SendingServer}}</p>
+                        <span class="text-sm font-medium text-gray-400">Envelope Sender (Return-Path):</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.EnvelopeSender}}</p>
                     </div>
-                    <div class="score-indicators">
-                    <span class="status {{if .SPFPass}}good{{else}}error{{end}}" title="SPF">SPF {{if .SPFPass}}✓{{else}}✗{{end}}</span>
-                    <span class="status {{if .DMARCPass}}good{{else}}error{{end}}" title="DMARC">DMARC {{if .DMARCPass}}✓{{else}}✗{{end}}</span>
-                    <span class="status {{if .DKIMPass}}good{{else}}error{{end}}" title="DKIM">DKIM {{if .DKIMPass}}✓{{else}}✗{{end}}</span>
-                    <span class="status {{if .Encrypted}}good{{else}}error{{end}}" title="Encrypted">Encrypted {{if .Encrypted}}✓{{else}}✗{{end}}</span>
-                    {{if .Blacklists}}
-                        <span class="status error" title="{{range .Blacklists}}{{.}}, {{end}}">Blacklisted {{len .Blacklists}} times</span>
-                    {{else}}
-                        <span class="status good">Not listed on major blacklists</span>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">From Domain:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.FromDomain}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Sending Server:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.SendingServer}}</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">🔒 Security Status</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .SPFPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            SPF {{if .SPFPass}}✓{{else}}✗{{end}}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .DMARCPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            DMARC {{if .DMARCPass}}✓{{else}}✗{{end}}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .DKIMPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            DKIM {{if .DKIMPass}}✓{{else}}✗{{end}}
+                        </span>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .Encrypted}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            Encrypted {{if .Encrypted}}✓{{else}}✗{{end}}
+                        </span>
+                        {{if .Blacklists}}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-900 text-red-200 border border-red-600">
+                                Blacklisted {{len .Blacklists}} times
+                            </span>
+                        {{else}}
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-900 text-green-200 border border-green-600">
+                                Not Blacklisted
+                            </span>
+                        {{end}}
+                    </div>
+                    {{if .SenderRep}}
+                    <div class="mt-4">
+                        <span class="text-sm font-medium text-gray-400">Sender Reputation:</span>
+                        <div class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mt-1 {{if contains .SenderRep "EXCELLENT"}}bg-green-900 text-green-200 border border-green-600{{else if contains .SenderRep "GOOD"}}bg-green-900 text-green-200 border border-green-600{{else if contains .SenderRep "FAIR"}}bg-yellow-900 text-yellow-200 border border-yellow-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            {{.SenderRep}}
+                        </div>
+                    </div>
                     {{end}}
+                </div>
+            </div>
+            <div class="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-600">
+                <p class="text-sm text-gray-300">
+                    <strong class="text-gray-200">Note:</strong> The <strong>Envelope Sender</strong> is the real sender used for delivery (can differ from From). 
+                    The <strong>From Domain</strong> is shown to the recipient. The <strong>Sending Server</strong> is the host/IP that sent the message. 
+                    If these differ, the message may be sent on behalf of another user or via a third-party service.
+                </p>
+            </div>
+        </div>
+        <!-- All Headers Table -->
+        <div class="bg-gray-800 rounded-lg border border-gray-700">
+            <details class="p-6">
+                <summary class="text-xl font-bold text-gray-100 cursor-pointer hover:text-blue-400 transition-colors">
+                    📋 All Email Headers Table
+                </summary>
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <input type="text" 
+                               id="headerSearch" 
+                               placeholder="Search headers..." 
+                               class="w-full max-w-md px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
                     </div>
-                </div>                    
-                {{if .SenderRep}}
-                <div>
-                    <b><span>Sender Reputation: </span></b><div class="status {{if contains .SenderRep "EXCELLENT"}}good{{else if contains .SenderRep "GOOD"}}good{{else if contains .SenderRep "FAIR"}}warning{{else}}error{{end}}">
-                        {{.SenderRep}}
+                    <div class="overflow-x-auto">
+                        <table id="headersTable" class="w-full border border-gray-600 rounded-lg overflow-hidden">
+                            <thead class="bg-gray-900">
+                                <tr>
+                                    <th class="text-left px-4 py-3 text-gray-200 font-medium border-b border-gray-600 w-48">Header Name</th>
+                                    <th class="text-left px-4 py-3 text-gray-200 font-medium border-b border-gray-600">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-600">
+                                {{range $k, $v := .AllHeaders}}
+                                <tr class="hover:bg-gray-700/50">
+                                    <td class="px-4 py-3 text-gray-300 font-mono text-sm break-words border-r border-gray-600">{{$k}}</td>
+                                    <td class="px-4 py-3 text-gray-100 font-mono text-sm whitespace-pre-wrap break-words">{{$v}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                {{end}}
-                <div class="explanation">
-                    <small>
-                        <b>Envelope Sender</b> is the real sender used for delivery (can differ from From).<br>
-                        <b>From Domain</b> is the domain shown to the recipient.<br>
-                        <b>Sending Server</b> is the host or IP that actually sent the message (from first Received header).<br>
-                        If these differ, the message may be sent on behalf of another user or via a third-party service.
-                    </small>
-                </div>
-            </div>
-        </div>
-                <details id="all-headers" class="section" style="margin-top:10px;">
-            <summary><b style="font-size: 1.5em;">All Email Headers Table</b></summary>
-            <div style="margin-bottom:10px;">
-                <input type="text" id="headerSearch" placeholder="Search headers..." style="width: 100%; max-width: 350px; padding: 5px; border-radius: 4px; border: 1px solid #444; background: #232323; color: #e0e0e0;">
-            </div>
-            <div style="overflow-x:auto;">
-            <table id="headersTable" style="width:100%; border-collapse:collapse; border:1px solid #444;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left; padding:4px 8px; border:1px solid #444; width: 180px; background:#232323;">Header Name</th>
-                        <th style="text-align:left; padding:4px 8px; border:1px solid #444; background:#232323;">Value</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {{range $k, $v := .AllHeaders}}
-                    <tr>
-                        <td style="vertical-align:top; padding:4px 8px; border:1px solid #444; word-break:break-word;">{{$k}}</td>
-                        <td style="vertical-align:top; padding:4px 8px; border:1px solid #444; white-space:pre-wrap; word-break:break-word;">{{$v}}</td>
-                    </tr>
-                    {{end}}
-                </tbody>
-            </table>
-            </div>
-        </details>
-
-        <div class="section">
-            <h2>Basic Information</h2>
-            <div class="grid">
-                <div>
-                    <p><b>From:</b> {{.From}}</p>
-                    <p><b>To:</b> {{.To}}</p>
-                    <p><b>Subject:</b> {{.Subject}}</p>
-                    <p><b>Date:</b> {{.Date}}</p>
-                    {{if .ReplyTo}}<p><b>Reply-To:</b> {{.ReplyTo}}</p>{{end}}
-                </div>
-                <div>
-                    <p><b>Message-ID:</b> {{.MessageID}}</p>
-                    <p><b>Priority:</b> {{.Priority}}</p>
-                    <p><b>Content Type:</b> {{.ContentType}}</p>
-                    <p><b>Encoding:</b> {{.Encoding}}</p>
-                </div>
-            </div>
+            </details>
         </div>
 
-        <div class="section">
-            <h2>Mail Flow</h2>
-            <ul class="mail-flow">
-                {{range .Received}}<li>{{.}}</li>{{end}}
-            </ul>
-        </div>
-
-        {{if ne .DeliveryDelay "Insufficient data for delay analysis"}}
-        <div class="section">
-            <h2>Delivery Analysis</h2>
-            <p><b>Delivery Timing:</b> {{.DeliveryDelay}}</p>
-            {{if .GeoLocation}}<p><b>Geographic Info:</b> {{.GeoLocation}}</p>{{end}}
+        {{if .PhishingRisk}}
+        <!-- Security Risk Assessment -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔍 Security Risk Assessment</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">Phishing Risk</h3>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if eq (index (splitString .PhishingRisk " ") 0) "HIGH"}}bg-red-900 text-red-200 border border-red-600{{else if eq (index (splitString .PhishingRisk " ") 0) "MEDIUM"}}bg-yellow-900 text-yellow-200 border border-yellow-600{{else}}bg-green-900 text-green-200 border border-green-600{{end}}">
+                        {{.PhishingRisk}}
+                    </span>
+                </div>
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">Spoofing Risk</h3>
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if contains .SpoofingRisk "POTENTIAL"}}bg-yellow-900 text-yellow-200 border border-yellow-600{{else}}bg-green-900 text-green-200 border border-green-600{{end}}">
+                        {{.SpoofingRisk}}
+                    </span>
+                </div>
+            </div>
         </div>
         {{end}}
         
-        <div class="section">
-            <h2>Security Analysis</h2>
-            <div class="security-analysis-vertical">
-                <div class="section">
-                    <h3>SPF Authentication</h3>
-                    <div class="status {{if .SPFPass}}good{{else}}error{{end}}">
-                        {{if .SPFPass}}✓ Passed{{else}}✗ Failed{{end}}
+        <!-- Basic Information -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">📧 Basic Information</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="space-y-3">
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">From:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded break-all">{{.From}}</p>
                     </div>
-                    <p>{{.SPFDetails}}</p>
-                    {{if .SPFRecord}}<pre>{{.SPFRecord}}</pre>{{end}}
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">To:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded break-all">{{.To}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Subject:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded break-words">{{.Subject}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Date:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.Date}}</p>
+                    </div>
+                    {{if .ReplyTo}}
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Reply-To:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded break-all">{{.ReplyTo}}</p>
+                    </div>
+                    {{end}}
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Message-ID:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded break-all">{{.MessageID}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Priority:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.Priority}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Content Type:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.ContentType}}</p>
+                    </div>
+                    <div>
+                        <span class="text-sm font-medium text-gray-400">Encoding:</span>
+                        <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.Encoding}}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mail Flow -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔄 Mail Flow</h2>
+            <div class="space-y-3">
+                {{range $index, $received := .Received}}
+                <div class="flex items-start space-x-3">
+                    <div class="flex-shrink-0 w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        {{add $index 1}}
+                    </div>
+                    <div class="flex-1 p-3 bg-gray-900 rounded-lg border border-gray-600">
+                        <p class="text-gray-100 font-mono text-sm">{{$received}}</p>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </div>
+
+        <!-- Delivery Analysis -->
+        {{if ne .DeliveryDelay "Insufficient data for delay analysis"}}
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">⏱️ Delivery Analysis</h2>
+            <div class="space-y-3">
+                <div>
+                    <span class="text-sm font-medium text-gray-400">Delivery Timing:</span>
+                    <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.DeliveryDelay}}</p>
+                </div>
+                {{if .GeoLocation}}
+                <div>
+                    <span class="text-sm font-medium text-gray-400">Geographic Info:</span>
+                    <p class="text-gray-100 font-mono text-sm bg-gray-900 p-2 rounded">{{.GeoLocation}}</p>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+        
+        <!-- Security Analysis -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔒 Security Analysis</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- SPF Authentication -->
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">SPF Authentication</h3>
+                    <div class="mb-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .SPFPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            {{if .SPFPass}}✓ Passed{{else}}✗ Failed{{end}}
+                        </span>
+                    </div>
+                    <p class="text-gray-300 text-sm mb-3">{{.SPFDetails}}</p>
+                    {{if .SPFRecord}}
+                    <div class="mb-3">
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600">{{.SPFRecord}}</pre>
+                    </div>
+                    {{end}}
                     {{if .SPFHeader}}
-                    <details class="details"><summary>Show SPF Header</summary><pre>{{.SPFHeader}}</pre></details>
+                    <details class="text-sm">
+                        <summary class="text-blue-400 cursor-pointer hover:text-blue-300">Show SPF Header</summary>
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600 mt-2">{{.SPFHeader}}</pre>
+                    </details>
                     {{end}}
                 </div>
 
-                <div class="section">
-                    <h3>DMARC Policy</h3>
-                    <div class="status {{if .DMARCPass}}good{{else}}error{{end}}">
-                        {{if .DMARCPass}}✓ Passed{{else}}✗ Failed{{end}}
+                <!-- DMARC Policy -->
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">DMARC Policy</h3>
+                    <div class="mb-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .DMARCPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            {{if .DMARCPass}}✓ Passed{{else}}✗ Failed{{end}}
+                        </span>
                     </div>
-                    <p>{{.DMARCDetails}}</p>
-                    {{if .DMARCRecord}}<pre>{{.DMARCRecord}}</pre>{{end}}
+                    <p class="text-gray-300 text-sm mb-3">{{.DMARCDetails}}</p>
+                    {{if .DMARCRecord}}
+                    <div class="mb-3">
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600">{{.DMARCRecord}}</pre>
+                    </div>
+                    {{end}}
                     {{if .DMARCHeader}}
-                    <details class="details"><summary>Show DMARC Header</summary><pre>{{.DMARCHeader}}</pre></details>
+                    <details class="text-sm">
+                        <summary class="text-blue-400 cursor-pointer hover:text-blue-300">Show DMARC Header</summary>
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600 mt-2">{{.DMARCHeader}}</pre>
+                    </details>
                     {{end}}
                 </div>
 
-                <div class="section">
-                    <h3>DKIM Signature</h3>
-                    <div class="status {{if .DKIMPass}}good{{else}}error{{end}}">
-                        {{if .DKIMPass}}✓ Present{{else}}✗ Missing{{end}}
+                <!-- DKIM Signature -->
+                <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <h3 class="text-lg font-semibold text-gray-200 mb-3">DKIM Signature</h3>
+                    <div class="mb-3">
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{if .DKIMPass}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                            {{if .DKIMPass}}✓ Present{{else}}✗ Missing{{end}}
+                        </span>
                     </div>
-                    <p>{{.DKIMDetails}}</p>
+                    <p class="text-gray-300 text-sm mb-3">{{.DKIMDetails}}</p>
                     {{if .DKIM}}
-                    <details class="details"><summary>Show DKIM Header</summary><pre>{{.DKIM}}</pre></details>
+                    <details class="text-sm">
+                        <summary class="text-blue-400 cursor-pointer hover:text-blue-300">Show DKIM Header</summary>
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600 mt-2">{{.DKIM}}</pre>
+                    </details>
                     {{else if .DKIMHeader}}
-                    <details class="details"><summary>Show DKIM Header</summary><pre>{{.DKIMHeader}}</pre></details>
+                    <details class="text-sm">
+                        <summary class="text-blue-400 cursor-pointer hover:text-blue-300">Show DKIM Header</summary>
+                        <pre class="bg-gray-800 text-gray-100 p-3 rounded text-xs overflow-x-auto border border-gray-600 mt-2">{{.DKIMHeader}}</pre>
+                    </details>
                     {{end}}
                 </div>
             </div>
         </div>
 
-        <div class="section">
-            <h2>Encryption</h2>
-            <div class="status {{if .Encrypted}}good{{else}}error{{end}}">
-                {{if .Encrypted}}Encrypted (TLS){{else}}Not Encrypted{{end}}
+        <!-- Encryption -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔐 Encryption</h2>
+            <div class="mb-4">
+                <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium {{if .Encrypted}}bg-green-900 text-green-200 border border-green-600{{else}}bg-red-900 text-red-200 border border-red-600{{end}}">
+                    {{if .Encrypted}}🔒 Encrypted (TLS){{else}}🔓 Not Encrypted{{end}}
+                </span>
             </div>
-            <details><summary>Show Encryption Details</summary><pre>{{.EncryptionDetail}}</pre></details>
+            <details class="text-sm">
+                <summary class="text-blue-400 cursor-pointer hover:text-blue-300 mb-2">Show Encryption Details</summary>
+                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto border border-gray-600">{{.EncryptionDetail}}</pre>
+            </details>
         </div>
 
         {{if .Warnings}}
-        <div class="section">
-            <h2>Warnings</h2>
-            <ul>
-                {{range .Warnings}}<li class="status warning">⚠️ {{.}}</li>{{end}}
-            </ul>
+        <!-- Warnings -->
+        <div class="bg-yellow-900/20 rounded-lg p-6 border border-yellow-600">
+            <h2 class="text-2xl font-bold text-yellow-200 mb-4">⚠️ Warnings</h2>
+            <div class="space-y-2">
+                {{range .Warnings}}
+                <div class="flex items-start space-x-2">
+                    <span class="text-yellow-400 mt-1">⚠️</span>
+                    <p class="text-yellow-100">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if .SecurityFlags}}
-        <div class="section">
-            <h2>Security Flags</h2>
-            <ul>
-                {{range .SecurityFlags}}<li class="status">🔒 {{.}}</li>{{end}}
-            </ul>
+        <!-- Security Flags -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🛡️ Security Flags</h2>
+            <div class="space-y-2">
+                {{range .SecurityFlags}}
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-400 mt-1">🔒</span>
+                    <p class="text-gray-100">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if .Blacklists}}
-        <div class="section">
-            <h2>Blacklist Status</h2>
-            <div style="margin-bottom: 6px;">
-                <b>Checked:</b>
-                {{if .SendingServer}}IP {{.SendingServer}}{{else if .FromDomain}}Domain {{.FromDomain}}{{end}}
+        <!-- Blacklist Status -->
+        <div class="bg-red-900/20 rounded-lg p-6 border border-red-600">
+            <h2 class="text-2xl font-bold text-red-200 mb-4">🚫 Blacklist Status</h2>
+            <div class="mb-4">
+                <span class="text-sm font-medium text-gray-400">Checked:</span>
+                <span class="text-gray-100 ml-2">
+                    {{if .SendingServer}}IP {{.SendingServer}}{{else if .FromDomain}}Domain {{.FromDomain}}{{end}}
+                </span>
             </div>
-            <div class="status error">⚠️ Listed on the following blacklists:</div>
-            <ul>
-                {{range .Blacklists}}<li>{{.}}</li>{{end}}
-            </ul>
+            <div class="mb-4">
+                <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-red-900 text-red-200 border border-red-600">
+                    ⚠️ Listed on the following blacklists
+                </span>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                {{range .Blacklists}}
+                <div class="bg-red-900/30 p-3 rounded border border-red-600">
+                    <p class="text-red-100 text-sm">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
-
         {{if .SpamFlags}}
-        <div class="section">
-            <h2>Spam Analysis</h2>
-            <div class="status {{if gt (len .SpamFlags) 0}}warning{{else}}good{{end}}">
-                {{if gt (len .SpamFlags) 0}}⚠️ Spam Indicators Found{{else}}✓ No Spam Indicators{{end}}
+        <!-- Spam Analysis -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🛡️ Spam Analysis</h2>
+            <div class="mb-4">
+                <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium {{if gt (len .SpamFlags) 0}}bg-yellow-900 text-yellow-200 border border-yellow-600{{else}}bg-green-900 text-green-200 border border-green-600{{end}}">
+                    {{if gt (len .SpamFlags) 0}}⚠️ Spam Indicators Found{{else}}✓ No Spam Indicators{{end}}
+                </span>
             </div>
-            {{if .SpamScore}}<p><b>Spam Score:</b> {{.SpamScore}}</p>{{end}}
+            {{if .SpamScore}}
+            <div class="mb-4">
+                <span class="text-sm font-medium text-gray-400">Spam Score:</span>
+                <span class="text-gray-100 ml-2 font-mono">{{.SpamScore}}</span>
+            </div>
+            {{end}}
             {{if .SpamFlags}}
-            <ul>
-                {{range .SpamFlags}}<li>{{.}}</li>{{end}}
-            </ul>
+            <div class="space-y-2">
+                {{range .SpamFlags}}
+                <div class="bg-yellow-900/20 p-3 rounded border border-yellow-600">
+                    <p class="text-yellow-100 text-sm">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
             {{end}}
         </div>
         {{end}}
 
         {{if ne .VirusInfo "No virus scanning information found"}}
-        <div class="section">
-            <h2>Virus Scanning</h2>
-            <div class="status good">🛡️ Virus Scanning Information</div>
-            <p>{{.VirusInfo}}</p>
-        </div>
-        {{end}}
-
-        {{if .PhishingRisk}}
-        <div class="section">
-            <h2>Security Risk Assessment</h2>
-            <div class="security-analysis-vertical">
-                <div class="section">
-                    <h3>Phishing Risk</h3>
-                    <div class="status {{if eq (index (splitString .PhishingRisk " ") 0) "HIGH"}}error{{else if eq (index (splitString .PhishingRisk " ") 0) "MEDIUM"}}warning{{else}}good{{end}}">
-                        {{.PhishingRisk}}
-                    </div>
-                </div>
-                <div class="section">
-                    <h3>Spoofing Risk</h3>
-                    <div class="status {{if contains .SpoofingRisk "POTENTIAL"}}warning{{else}}good{{end}}">
-                        {{.SpoofingRisk}}
-                    </div>
-                </div>
+        <!-- Virus Scanning -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🛡️ Virus Scanning</h2>
+            <div class="mb-4">
+                <span class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium bg-green-900 text-green-200 border border-green-600">
+                    🛡️ Virus Scanning Information
+                </span>
             </div>
+            <p class="text-gray-100">{{.VirusInfo}}</p>
         </div>
         {{end}}
 
         {{if .ListInfo}}
-        <div class="section">
-            <h2>Mailing List Information</h2>
-            <ul>
-                {{range .ListInfo}}<li>{{.}}</li>{{end}}
-            </ul>
-            {{if .AutoReply}}<p class="status">📧 Auto-reply message detected</p>{{end}}
-            {{if .BulkEmail}}<p class="status">📬 Bulk/marketing email detected</p>{{end}}
+        <!-- Mailing List Information -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">📬 Mailing List Information</h2>
+            <div class="space-y-2 mb-4">
+                {{range .ListInfo}}
+                <div class="bg-gray-900 p-3 rounded border border-gray-600">
+                    <p class="text-gray-100 text-sm">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
+            <div class="flex flex-wrap gap-2">
+                {{if .AutoReply}}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-900 text-blue-200 border border-blue-600">
+                    📧 Auto-reply message detected
+                </span>
+                {{end}}
+                {{if .BulkEmail}}
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-900 text-blue-200 border border-blue-600">
+                    📬 Bulk/marketing email detected
+                </span>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if .Compliance}}
-        <div class="section">
-            <h2>Compliance Information</h2>
-            <ul>
-                {{range .Compliance}}<li class="status good">✓ {{.}}</li>{{end}}
-            </ul>
+        <!-- Compliance Information -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">✅ Compliance Information</h2>
+            <div class="space-y-2">
+                {{range .Compliance}}
+                <div class="flex items-start space-x-2">
+                    <span class="text-green-400 mt-1">✓</span>
+                    <p class="text-gray-100">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if .ARC}}
-        <div class="section">
-            <h2>ARC (Authenticated Received Chain)</h2>
-            <details><summary>Show ARC Headers</summary>
-            <ul>
-                {{range .ARC}}<li><pre>{{.}}</pre></li>{{end}}
-            </ul>
+        <!-- ARC (Authenticated Received Chain) -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔗 ARC (Authenticated Received Chain)</h2>
+            <details class="text-sm">
+                <summary class="text-blue-400 cursor-pointer hover:text-blue-300 mb-2">Show ARC Headers</summary>
+                <div class="space-y-3 mt-4">
+                    {{range .ARC}}
+                    <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto border border-gray-600">{{.}}</pre>
+                    {{end}}
+                </div>
             </details>
         </div>
         {{end}}
 
         {{if ne .BIMI "No BIMI record found"}}
-        <div class="section">
-            <h2>Brand Indicators (BIMI)</h2>
-            <p>{{.BIMI}}</p>
+        <!-- Brand Indicators (BIMI) -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🎨 Brand Indicators (BIMI)</h2>
+            <p class="text-gray-100">{{.BIMI}}</p>
         </div>
         {{end}}
 
         {{if .Attachments}}
-        <div class="section">
-            <h2>Attachment Information</h2>
-            <ul>
-                {{range .Attachments}}<li>{{.}}</li>{{end}}
-            </ul>
+        <!-- Attachment Information -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">📎 Attachment Information</h2>
+            <div class="space-y-2">
+                {{range .Attachments}}
+                <div class="bg-gray-900 p-3 rounded border border-gray-600">
+                    <p class="text-gray-100 text-sm font-mono">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if .URLs}}
-        <div class="section">
-            <h2>URL Information</h2>
-            <ul>
-                {{range .URLs}}<li>{{.}}</li>{{end}}
-            </ul>
+        <!-- URL Information -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🔗 URL Information</h2>
+            <div class="space-y-2">
+                {{range .URLs}}
+                <div class="bg-gray-900 p-3 rounded border border-gray-600">
+                    <p class="text-gray-100 text-sm font-mono break-all">{{.}}</p>
+                </div>
+                {{end}}
+            </div>
         </div>
         {{end}}
 
         {{if ne .ThreadInfo "No threading information available"}}
-        <div class="section">
-            <h2>Message Threading</h2>
-            <details><summary>Show Threading Information</summary>
-            <pre>{{.ThreadInfo}}</pre>
+        <!-- Message Threading -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
+            <h2 class="text-2xl font-bold text-gray-100 mb-4">🧵 Message Threading</h2>
+            <details class="text-sm">
+                <summary class="text-blue-400 cursor-pointer hover:text-blue-300 mb-2">Show Threading Information</summary>
+                <pre class="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto border border-gray-600 mt-4">{{.ThreadInfo}}</pre>
             </details>
         </div>
         {{end}}
 
-
-        <div class="section">
-            <button onclick="exportPDF()" type="button">Export as PDF</button>
-            <button onclick="exportImage()" type="button">Save as Image</button>
-            <button onclick="printReport()" type="button">Print Report</button>
+        <!-- Export Options -->
+        <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
+            <h2 class="text-xl font-bold text-gray-100 mb-4">📄 Export Options</h2>
+            <div class="flex flex-wrap justify-center gap-4">
+                <button onclick="exportPDF()" 
+                        type="button" 
+                        class="bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center space-x-2">
+                    <span>📄</span>
+                    <span>Export as PDF</span>
+                </button>
+                <button onclick="exportImage()" 
+                        type="button" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center space-x-2">
+                    <span>🖼️</span>
+                    <span>Save as Image</span>
+                </button>
+                <button onclick="printReport()" 
+                        type="button" 
+                        class="bg-green-600 hover:bg-green-700 text-white font-medium px-6 py-3 rounded-lg transition-colors flex items-center space-x-2">
+                    <span>🖨️</span>
+                    <span>Print Report</span>
+                </button>
+            </div>
         </div>
     </div>
     {{end}}
@@ -353,6 +588,10 @@
     
     function contains(str, substr) {
         return str.includes(substr);
+    }
+    
+    function add(a, b) {
+        return a + b;
     }
 
     function exportImage() {

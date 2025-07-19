@@ -19,18 +19,18 @@ type Handler struct {
 }
 
 type PasswordConfig struct {
-	Type           string
-	Length         int
-	IncludeUpper   bool
-	IncludeLower   bool
-	NumberCount    int
-	SpecialChars   string
-	NoConsecutive  bool
-	WordCount      int
-	UseNumbers     bool
-	UseSpecial     bool
-	NumberPosition string
-	SavePasswords  bool
+	Type            string
+	Length          int
+	IncludeUpper    bool
+	IncludeLower    bool
+	NumberCount     int
+	SpecialChars    string
+	MinSpecialChars int
+	NoConsecutive   bool
+	WordCount       int
+	UseNumbers      bool
+	UseSpecial      bool
+	NumberPosition  string
 }
 
 func NewHandler(embeddedFiles embed.FS) *Handler {
@@ -59,7 +59,7 @@ func NewHandler(embeddedFiles embed.FS) *Handler {
 				return 0
 			}
 		},
-	}).ParseFS(embeddedFiles, "web/base.html", "web/password.html"))
+	}).ParseFS(embeddedFiles, "web/base.html", "web/pwgenerator.html"))
 
 	return &Handler{
 		templates: tmpl,
@@ -72,24 +72,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Generate CSRF token
 	csrfToken, err := h.csrf.GenerateToken()
 	if err != nil {
-		http.Redirect(w, r, "/password?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
+		http.Redirect(w, r, "/pwgenerator?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
 		return
 	}
 
 	// Parse URL parameters to set default values
 	config := PasswordConfig{
-		Type:           getStringParam(r, "type", "passphrase"),
-		Length:         getIntParam(r, "length", 12),
-		IncludeUpper:   getBoolParam(r, "includeUpper", true),
-		IncludeLower:   getBoolParam(r, "includeLower", true),
-		NumberCount:    getIntParam(r, "numberCount", 1),
-		SpecialChars:   getStringParam(r, "specialChars", "!@#$%^&*-_=+"),
-		NoConsecutive:  getBoolParam(r, "noConsecutive", false),
-		WordCount:      getIntParam(r, "wordCount", 3),
-		UseNumbers:     getBoolParam(r, "useNumbers", true),
-		UseSpecial:     getBoolParam(r, "useSpecial", false),
-		NumberPosition: getStringParam(r, "numberPosition", "end"),
-		SavePasswords:  getBoolParam(r, "savePasswords", false),
+		Type:            getStringParam(r, "type", "passphrase"),
+		Length:          getIntParam(r, "length", 12),
+		IncludeUpper:    getBoolParam(r, "includeUpper", true),
+		IncludeLower:    getBoolParam(r, "includeLower", true),
+		NumberCount:     getIntParam(r, "numberCount", 2),
+		SpecialChars:    getStringParam(r, "specialChars", "!@#$%&*-_=+."),
+		MinSpecialChars: getIntParam(r, "minSpecialChars", 3),
+		NoConsecutive:   getBoolParam(r, "noConsecutive", true),
+		WordCount:       getIntParam(r, "wordCount", 3),
+		UseNumbers:      getBoolParam(r, "useNumbers", true),
+		UseSpecial:      getBoolParam(r, "useSpecial", false),
+		NumberPosition:  getStringParam(r, "numberPosition", "end"),
 	}
 
 	data := struct {
@@ -101,7 +101,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Config:      config,
 		CSRFToken:   csrfToken,
 	}
-	h.templates.ExecuteTemplate(w, "password.html", data)
+	h.templates.ExecuteTemplate(w, "pwgenerator.html", data)
 }
 
 // Helper functions to parse URL parameters

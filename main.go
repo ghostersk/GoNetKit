@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"headeranalyzer/landingpage"
 	"headeranalyzer/parser"
 	"headeranalyzer/passwordgenerator"
 	"headeranalyzer/pwpusher"
@@ -129,6 +130,10 @@ func main() {
 	passwordgenerator.InitWordList()
 
 	// Create handlers with separate template sets
+	landingHandler, err := landingpage.NewHandler(embeddedFiles)
+	if err != nil {
+		log.Fatalf("Failed to initialize landing page handler: %v", err)
+	}
 	indexHandler := parser.NewHandler(embeddedFiles)
 	dnsHandler := resolver.NewHandler(embeddedFiles)
 	passwordHandler := passwordgenerator.NewHandler(embeddedFiles)
@@ -158,17 +163,30 @@ func main() {
 		w.Write(data)
 	})
 
-	http.Handle("/", indexHandler)
+	// Serve CSS file with correct MIME type
+	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
+		data, err := fs.ReadFile(staticFS, "style.css")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/css")
+		w.Write(data)
+	})
+
+	http.Handle("/", landingHandler)
+
+	http.Handle("/analyze", indexHandler)
 
 	http.Handle("/dns", dnsHandler)
 
 	http.HandleFunc("/api/dns", resolver.DNSAPIHandler)
 
-	http.Handle("/password", passwordHandler)
+	http.Handle("/pwgenerator", passwordHandler)
 
-	http.HandleFunc("/api/password", passwordgenerator.PasswordAPIHandler)
+	http.HandleFunc("/api/pwgenerator", passwordgenerator.PasswordAPIHandler)
 
-	http.HandleFunc("/api/password/info", passwordgenerator.PasswordInfoAPIHandler)
+	http.HandleFunc("/api/pwgenerator/info", passwordgenerator.PasswordInfoAPIHandler)
 
 	// Register PWPusher routes
 	pwPusher.RegisterRoutesWithDefault()
