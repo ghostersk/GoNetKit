@@ -1,12 +1,12 @@
 {{template "base.html" .}}
 
-{{define "title"}}Password Generator - HeaderAnalyzer{{end}}
+{{define "title"}}Password Generator{{end}}
 
 {{define "content"}}
-<div class="container mx-auto px-4 py-8 max-w-4xl">
-    <div class="text-center mb-8">
+<div class="container mx-auto px-4 py-6 max-w-4xl">
+    <div class="text-center mb-6">
         <a href="/pwgenerator" class="inline-block">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-100 hover:text-blue-400 transition-colors cursor-pointer mb-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-100 hover:text-blue-400 transition-colors cursor-pointer mb-3">
                 🔐 Password Generator
             </h1>
         </a>
@@ -15,61 +15,59 @@
     <input type="hidden" id="csrfToken" value="{{.CSRFToken}}">
     
     <!-- Tab Buttons -->
-    <div class="flex space-x-2 mb-6 bg-gray-800 p-2 rounded-lg border border-gray-700">
-        <button class="flex-1 py-3 px-4 rounded-lg text-center font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600" id="randomTab">
+    <div class="flex space-x-2 mb-4 bg-gray-800 p-2 rounded-lg border border-gray-700">
+        <button class="flex-1 py-2 px-3 rounded-lg text-center font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600" id="randomTab">
             🎲 Random Password
         </button>
-        <button class="flex-1 py-3 px-4 rounded-lg text-center font-medium transition-colors bg-blue-600 text-white" id="passphraseTab">
+        <button class="flex-1 py-2 px-3 rounded-lg text-center font-medium transition-colors bg-blue-600 text-white" id="passphraseTab">
             📝 Passphrase
         </button>
     </div>
 
     <!-- Password Output -->
         <!-- Generated Password Display -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <h2 class="text-xl font-semibold text-gray-200">🔐 Generated Password</h2>
-            <div class="flex items-center gap-4 text-sm">
-                <span id="characterCount" class="text-gray-400 bg-gray-700 px-3 py-1 rounded-full">
-                    0 characters
-                </span>
-            </div>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-6">
+        <div class="flex items-center justify-between gap-3 mb-3">
+            <h2 class="text-lg font-semibold text-gray-200">🔐 Generated Password</h2>
+            <span id="characterCount" class="text-gray-400 bg-gray-700 px-3 py-1 rounded-full text-sm flex-shrink-0">
+                0 characters
+            </span>
         </div>
         
         <div class="relative">
             <input type="text" id="generatedPassword" readonly 
-                   class="w-full p-4 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 font-mono text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 font-mono text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                    placeholder="Click 'Generate Password' to create a new password">
             <button onclick="copyPassword()" 
-                    class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                 📋 Copy
             </button>
         </div>
     </div>
 
     <!-- Generate Button -->
-    <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+    <div class="flex flex-row items-stretch justify-center gap-3 mb-6">
         <button onclick="generatePassword()" 
-                class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all duration-200 transform hover:scale-105">
+                class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg text-base transition-all duration-200 hover:scale-105 flex-shrink-0">
             🎲 Generate Password
         </button>
         <button onclick="copyCurrentURL()" 
-                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-4 px-6 rounded-lg transition-colors duration-200">
+                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg text-base transition-colors duration-200 flex-shrink-0">
             🔗 Copy URL with Settings
         </button>
         <button onclick="resetAllSettings()" 
-                class="bg-red-600 hover:bg-red-700 text-white font-medium py-4 px-6 rounded-lg transition-colors duration-200">
+                class="bg-red-600 hover:bg-red-700 text-white font-medium py-3 px-6 rounded-lg text-base transition-colors duration-200 flex-shrink-0">
             🔄 Reset
         </button>
     </div>
 
     <!-- Settings -->
-    <div class="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-8">
-        <div class="flex items-center justify-between mb-4 cursor-pointer" onclick="toggleSettings()">
-            <h3 class="text-xl font-semibold text-gray-200">🔧 Password Settings</h3>
+    <div class="bg-gray-800 rounded-lg p-4 border border-gray-700 mb-6">
+        <div class="flex items-center justify-between mb-3 cursor-pointer" onclick="toggleSettings()">
+            <h3 class="text-lg font-semibold text-gray-200">🔧 Password Settings</h3>
             <div class="flex items-center space-x-2">
                 <span id="settingsToggleText" class="text-sm text-gray-400">Click to expand</span>
-                <svg id="settingsChevron" class="w-5 h-5 text-gray-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg id="settingsChevron" class="w-4 h-4 text-gray-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                 </svg>
             </div>
@@ -77,7 +75,7 @@
         
         <div id="settingsContent" class="hidden">
             <!-- Save Passwords Option -->
-            <div class="p-3 bg-gray-900 rounded-lg border border-gray-600 mb-6">
+            <div class="p-2 bg-gray-900 rounded-lg border border-gray-600 mb-4">
                 <div class="flex items-center space-x-3">
                     <input type="checkbox" id="savePasswords" onchange="togglePasswordSaving(); autoSaveSettings()"
                            class="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
@@ -88,15 +86,15 @@
             </div>
 
             <!-- Settings Table -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="grid grid-cols-2 gap-6">
                 <!-- Left Column: Basic Password Settings -->
-                <div class="space-y-4">
-                    <h4 class="text-lg font-medium text-gray-200 mb-4 border-b border-gray-600 pb-2">🎲 Random Password Settings</h4>
+                <div class="space-y-3">
+                    <h4 class="text-base font-medium text-gray-200 mb-2 border-b border-gray-600 pb-1">🎲 Random Password Settings</h4>
                     
                     <div>
-                        <label for="length" class="block text-sm font-medium text-gray-300 mb-2">Password Length:</label>
+                        <label for="length" class="block text-sm font-medium text-gray-300 mb-1">Password Length:</label>
                         <input type="number" id="length" min="4" max="128" value="{{.Config.Length}}" onchange="updateURL(); autoSaveSettings()"
-                               class="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                               class="w-full px-2 py-1 bg-gray-900 border border-gray-600 rounded text-gray-100 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
                     </div>
                     
                     <div class="flex items-center space-x-3">
@@ -273,12 +271,12 @@ function toggleSettings() {
     if (content.classList.contains('hidden')) {
         // Expand
         content.classList.remove('hidden');
-        chevron.style.transform = 'rotate(180deg)';
+        chevron.classList.add('rotate-180');
         toggleText.textContent = 'Click to minimize';
     } else {
         // Collapse
         content.classList.add('hidden');
-        chevron.style.transform = 'rotate(0deg)';
+        chevron.classList.remove('rotate-180');
         toggleText.textContent = 'Click to expand';
     }
 }
@@ -488,11 +486,11 @@ function loadSavePasswordsSetting() {
 function showConfirmationPopup(title, message, onConfirm) {
     // Create backdrop
     const backdrop = document.createElement('div');
-    backdrop.className = 'fixed inset-0 z-50 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center p-4';
+    backdrop.className = 'fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4';
     
     // Create popup
     backdrop.innerHTML = `
-        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full shadow-2xl transform transition-all">
+        <div class="bg-gray-800 border border-gray-600 rounded-xl p-6 max-w-md w-full shadow-2xl transition-all">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-xl font-bold text-red-400">${title}</h3>
                 <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-gray-200 transition-colors">

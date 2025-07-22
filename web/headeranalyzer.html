@@ -40,11 +40,17 @@
     {{end}}
 
         {{if .From}}
+    <!-- Hidden form for refresh functionality -->
+    <form id="refreshForm" method="POST" style="display: none;">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <textarea name="headers" style="display: none;">{{.OriginalHeaders}}</textarea>
+    </form>
+    
     <div id="report" class="space-y-6">
         <!-- Sender Identification -->
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 class="text-2xl font-bold text-gray-100 mb-4">👤 Sender Identification</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-2 gap-6" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                 <div class="space-y-3">
                     <div>
                         <span class="text-sm font-medium text-gray-400">Envelope Sender (Return-Path):</span>
@@ -161,7 +167,7 @@
         <!-- Basic Information -->
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 class="text-2xl font-bold text-gray-100 mb-4">📧 Basic Information</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-2 gap-6">
                 <div class="space-y-3">
                     <div>
                         <span class="text-sm font-medium text-gray-400">From:</span>
@@ -246,7 +252,7 @@
         <!-- Security Analysis -->
         <div class="bg-gray-800 rounded-lg p-6 border border-gray-700">
             <h2 class="text-2xl font-bold text-gray-100 mb-4">🔒 Security Analysis</h2>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-3 gap-6">
                 <!-- SPF Authentication -->
                 <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
                     <h3 class="text-lg font-semibold text-gray-200 mb-3">SPF Authentication</h3>
@@ -595,10 +601,10 @@
     }
 
     function exportImage() {
-        if (typeof html2canvas === 'undefined') {
-            alert('Image export library not loaded. Please refresh the page and try again.');
-            return;
-        }
+        // if (typeof html2canvas === 'undefined') {
+        //     alert('Image export library not loaded. Please refresh the page and try again.');
+        //     return;
+        // }
         
         html2canvas(document.querySelector("#report")).then(canvas => {
             let link = document.createElement("a");
@@ -639,19 +645,19 @@
 
     function exportPDF() {
         // Check if libraries are available
-        if (typeof html2canvas === 'undefined') {
-            alert('HTML2Canvas library not loaded. Please refresh the page and try again.');
-            return;
-        }
+        // if (typeof html2canvas === 'undefined') {
+        //     alert('HTML2Canvas library not loaded. Please refresh the page and try again.');
+        //     return;
+        // }
         
         // Check if we have either html2pdf or jsPDF available
         const hasHtml2pdf = typeof html2pdf !== 'undefined';
         const hasJsPDF = typeof window.jsPDF !== 'undefined';
         
-        if (!hasHtml2pdf && !hasJsPDF) {
-            alert('PDF generation library not loaded. Please refresh the page and try again.');
-            return;
-        }
+        // if (!hasHtml2pdf && !hasJsPDF) {
+        //     alert('PDF generation library not loaded. Please refresh the page and try again.');
+        //     return;
+        // }
         
         // Store original states
         const originalDetailsStates = {};
@@ -903,7 +909,6 @@
             }
         } catch (error) {
             console.error('PDF export error:', error);
-            alert('PDF export failed. Please refresh the page and try again.');
             restoreOriginalState();
         }
         

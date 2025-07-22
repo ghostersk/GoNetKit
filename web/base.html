@@ -4,62 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{block "title" .}}{{end}}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        dark: {
-                            bg: '#1e1e1e',
-                            surface: '#2d2d2d',
-                            border: '#404040',
-                            text: '#e0e0e0',
-                            muted: '#999999'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="/style-tailwind.css">
     <style>
-        /* Custom animations and styles */
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        /* Prevent horizontal overflow */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            overflow-x: hidden;
+            max-width: 100vw;
+            width: 100%;
         }
         
-        @keyframes slideOutRight {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
+        /* Ensure proper container widths */
+        .container {
+            max-width: 100vw;
+            width: 100%;
         }
         
-        .animate-slide-in-right {
-            animation: slideInRight 0.3s ease-out forwards;
-        }
-        
-        .animate-slide-out-right {
-            animation: slideOutRight 0.3s ease-in forwards;
-        }
-        
-        /* Backdrop blur for popup */
-        .backdrop-blur-popup {
-            backdrop-filter: blur(8px);
-        }
-        
-        /* Floating button styles */
-        .floating-nav {
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        main {
+            max-width: 100vw;
+            width: 100%;
         }
     </style>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
     {{block "head" .}}{{end}}
 </head>
 <body class="bg-dark-bg text-dark-text min-h-screen">
     <!-- Floating Navigation -->
-    <div class="fixed top-4 right-4 z-50 floating-nav">
+    <div class="fixed top-4 right-4 z-50 floating-nav rounded-full">
         <div class="flex bg-dark-surface border border-dark-border rounded-full overflow-hidden">
             <!-- Home Button -->
             <a href="/" class="flex items-center justify-center w-12 h-12 bg-blue-600 hover:bg-blue-700 transition-colors duration-200 text-white">
@@ -78,27 +51,27 @@
     </div>
 
     <!-- Navigation Popup -->
-    <div id="navigationPopup" class="fixed inset-0 z-40 hidden">
+    <div id="navigationPopup" class="fixed inset-0 z-40 flex items-center justify-center p-4 transition-opacity duration-300 opacity-0 pointer-events-none overflow-y-auto">
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-popup" onclick="closeNavigationPopup()"></div>
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeNavigationPopup()"></div>
         
         <!-- Popup Content -->
-        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-dark-surface border border-dark-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-dark-text">Navigation</h2>
-                <button onclick="closeNavigationPopup()" class="text-dark-muted hover:text-dark-text transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                    </svg>
-                </button>
-            </div>
+        <div class="relative bg-dark-surface border border-dark-border rounded-xl p-6 w-full max-w-lg shadow-2xl z-10 transition-transform duration-300 scale-95 my-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-dark-text">Navigation</h2>
+                    <button onclick="closeNavigationPopup()" class="p-1 text-dark-muted hover:text-dark-text hover:bg-dark-bg rounded-lg transition-colors duration-200">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             
             <!-- IT Tools Category -->
             <div class="mb-6">
                 <h3 class="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">IT Tools</h3>
                 <div class="space-y-2">
                     <a href="/analyze" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
-                        <div class="flex items-center justify-center w-10 h-10 bg-green-600 rounded-lg mr-3 group-hover:bg-green-700 transition-colors">
+                        <div class="flex items-center justify-center w-10 h-10 bg-green-600 rounded-lg mr-4 group-hover:bg-green-700 transition-colors">
                             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
                                 <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
@@ -111,7 +84,7 @@
                     </a>
                     
                     <a href="/dns" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
-                        <div class="flex items-center justify-center w-10 h-10 bg-purple-600 rounded-lg mr-3 group-hover:bg-purple-700 transition-colors">
+                        <div class="flex items-center justify-center w-10 h-10 bg-purple-600 rounded-lg mr-4 group-hover:bg-purple-700 transition-colors">
                             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
                             </svg>
@@ -126,10 +99,10 @@
             
             <!-- Online Security Category -->
             <div>
-                <h3 class="text-sm font-semibold text-orange-400 uppercase tracking-wide mb-3">Online Security</h3>
+                <h3 class="text-sm font-semibold text-blue-400 uppercase tracking-wide mb-3">Online Security</h3>
                 <div class="space-y-2">
                     <a href="/pwgenerator" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
-                        <div class="flex items-center justify-center w-10 h-10 bg-yellow-600 rounded-lg mr-3 group-hover:bg-yellow-700 transition-colors">
+                        <div class="flex items-center justify-center w-10 h-10 bg-yellow-600 rounded-lg mr-4 group-hover:bg-yellow-700 transition-colors">
                             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M18 8a6 6 0 01-7.743 5.743L10 14l-0.257-.257A6 6 0 1118 8zm-1.5 0a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM10 7a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"/>
                             </svg>
@@ -141,7 +114,7 @@
                     </a>
                     
                     <a href="/pwpush" class="flex items-center p-3 rounded-lg hover:bg-dark-bg transition-colors duration-200 group">
-                        <div class="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg mr-3 group-hover:bg-red-700 transition-colors">
+                        <div class="flex items-center justify-center w-10 h-10 bg-red-600 rounded-lg mr-4 group-hover:bg-red-700 transition-colors">
                             <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
                             </svg>
@@ -172,18 +145,63 @@
         // Navigation popup functionality
         function openNavigationPopup() {
             const popup = document.getElementById('navigationPopup');
-            popup.classList.remove('hidden');
+            const content = popup.querySelector('.relative');
+            
+            // Prevent body scrolling
+            document.body.style.overflow = 'hidden';
+            
+            // Show popup
+            popup.classList.remove('pointer-events-none');
+            popup.classList.add('pointer-events-auto');
+            
+            // Trigger animations
+            setTimeout(() => {
+                popup.classList.remove('opacity-0');
+                popup.classList.add('opacity-100');
+                if (content) {
+                    content.classList.remove('scale-95');
+                    content.classList.add('scale-100');
+                }
+            }, 10);
         }
         
         function closeNavigationPopup() {
             const popup = document.getElementById('navigationPopup');
-            popup.classList.add('hidden');
+            const content = popup.querySelector('.relative');
+            
+            // Restore body scrolling
+            document.body.style.overflow = '';
+            
+            // Start close animation
+            popup.classList.remove('opacity-100');
+            popup.classList.add('opacity-0');
+            if (content) {
+                content.classList.remove('scale-100');
+                content.classList.add('scale-95');
+            }
+            
+            // Hide after animation
+            setTimeout(() => {
+                popup.classList.remove('pointer-events-auto');
+                popup.classList.add('pointer-events-none');
+            }, 300);
+        }
+        
+        function toggleNavigationPopup() {
+            const popup = document.getElementById('navigationPopup');
+            const isOpen = popup.classList.contains('pointer-events-auto');
+            
+            if (isOpen) {
+                closeNavigationPopup();
+            } else {
+                openNavigationPopup();
+            }
         }
         
         // Menu button click handler
         document.addEventListener('DOMContentLoaded', function() {
             const menuButton = document.getElementById('menuButton');
-            menuButton.addEventListener('click', openNavigationPopup);
+            menuButton.addEventListener('click', toggleNavigationPopup);
         });
         
         // Popup notification system with Tailwind classes

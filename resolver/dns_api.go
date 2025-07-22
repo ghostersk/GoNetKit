@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"headeranalyzer/security"
+	"gonetkit/security"
 
 	"github.com/miekg/dns"
 )

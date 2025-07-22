@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"headeranalyzer/security"
+	"gonetkit/security"
 )
 
 type Handler struct {
@@ -73,6 +73,44 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Validate CSRF token
 		csrfToken := r.FormValue("csrf_token")
 		if !h.csrf.ValidateToken(csrfToken) {
+			// If CSRF validation fails, check if this looks like a refresh attempt
+			// by seeing if we have headers data
+			headers := r.FormValue("headers")
+			if headers != "" {
+				// This appears to be a refresh attempt with stale CSRF token
+				// Generate a new token and re-analyze
+				log.Printf("DEBUG: CSRF validation failed, but reanalyzing with fresh token for refresh")
+				freshCSRFToken, err := h.csrf.GenerateToken()
+				if err != nil {
+					http.Redirect(w, r, "/?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
+					return
+				}
+
+				validatedHeaders, err := h.validator.ValidateEmailHeaders(headers)
+				if err != nil {
+					log.Printf("DEBUG: Validation failed on refresh: %v", err)
+					http.Redirect(w, r, "/?error="+url.QueryEscape("Invalid input provided"), http.StatusSeeOther)
+					return
+				}
+
+				report := Analyze(validatedHeaders)
+				data := struct {
+					*Report
+					CurrentPage     string
+					CSRFToken       string
+					OriginalHeaders string
+				}{
+					Report:          report,
+					CurrentPage:     "home",
+					CSRFToken:       freshCSRFToken,
+					OriginalHeaders: validatedHeaders,
+				}
+
+				h.templates.ExecuteTemplate(w, "headeranalyzer.html", data)
+				return
+			}
+
+			// Regular CSRF failure - redirect to home
 			http.Redirect(w, r, "/?error="+url.QueryEscape("Invalid security token. Please try again."), http.StatusSeeOther)
 			return
 		}
@@ -95,13 +133,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		log.Printf("DEBUG: Headers validated successfully")
 		report := Analyze(validatedHeaders)
 		log.Printf("DEBUG: Analysis completed, From field: '%s'", report.From)
-		// Create a wrapper struct to include current page info
+
+		// Generate a fresh CSRF token for the result page
+		freshCSRFToken, err := h.csrf.GenerateToken()
+		if err != nil {
+			log.Printf("ERROR: Failed to generate fresh CSRF token: %v", err)
+			http.Redirect(w, r, "/?error="+url.QueryEscape("Security token generation failed"), http.StatusSeeOther)
+			return
+		}
+
+		// Create a wrapper struct to include current page info and fresh CSRF token
 		data := struct {
 			*Report
-			CurrentPage string
+			CurrentPage     string
+			CSRFToken       string
+			OriginalHeaders string
 		}{
-			Report:      report,
-			CurrentPage: "home",
+			Report:          report,
+			CurrentPage:     "home",
+			CSRFToken:       freshCSRFToken,
+			OriginalHeaders: validatedHeaders,
 		}
 
 		log.Printf("DEBUG: About to render template with data")

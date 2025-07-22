@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"headeranalyzer/security"
+	"gonetkit/security"
 )
 
 type Handler struct {

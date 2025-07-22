@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	"headeranalyzer/landingpage"
-	"headeranalyzer/parser"
-	"headeranalyzer/passwordgenerator"
-	"headeranalyzer/pwpusher"
-	"headeranalyzer/resolver"
+	"gonetkit/landingpage"
+	"gonetkit/parser"
+	"gonetkit/passwordgenerator"
+	"gonetkit/pwpusher"
+	"gonetkit/resolver"
 
 	"github.com/getlantern/systray"
 )
@@ -166,6 +166,17 @@ func main() {
 	// Serve CSS file with correct MIME type
 	http.HandleFunc("/style.css", func(w http.ResponseWriter, r *http.Request) {
 		data, err := fs.ReadFile(staticFS, "style.css")
+		if err != nil {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "text/css")
+		w.Write(data)
+	})
+
+	// Serve Tailwind CSS file with correct MIME type
+	http.HandleFunc("/style-tailwind.css", func(w http.ResponseWriter, r *http.Request) {
+		data, err := fs.ReadFile(staticFS, "style-tailwind.css")
 		if err != nil {
 			http.NotFound(w, r)
 			return

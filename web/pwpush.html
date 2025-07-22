@@ -4,7 +4,7 @@
 
 {{define "head"}}
 {{if .Success}}
-<meta name="success-data" content='{"id":"{{.ID}}","url":"{{.PushURL}}","expiresAt":"{{.ExpiresAt}}"}'>
+<meta name="success-data" content='{"id":"{{.ID}}","url":"{{.PushURL}}","expiresAt":"{{.ExpiresAt}}","maxViews":"{{.MaxViews}}"}'>
 {{end}}
 {{end}}
 
@@ -32,12 +32,18 @@
                    readonly 
                    onclick="this.select()"
                    class="flex-1 p-3 bg-gray-900 border-2 border-gray-600 rounded-lg text-gray-100 font-mono text-sm focus:border-green-500 focus:outline-none">
-            <button onclick="copyToClipboard()" 
-                    class="copy-btn bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap">
-                📋 Copy
-            </button>
+            <div class="flex flex-row items-stretch justify-center gap-3">
+                <button onclick="copyToClipboard()" 
+                        class="copy-btn bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap">
+                    📋 Copy URL
+                </button>
+                <button onclick="copyAsMessage()" 
+                        class="copy-message-btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors whitespace-nowrap">
+                    💬 Copy as Message
+                </button>
+            </div>
         </div>
-        <p class="text-green-300 text-sm mb-4">🕒 Expires: {{.ExpiresAt}}</p>
+        <p class="text-green-300 text-sm mb-4">🕒 Expires: {{.ExpiresAt}} or after {{.MaxViews}} views.</p>
         <a href="/pwpush" 
            class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
             Create Another Link
@@ -95,7 +101,8 @@
                                id="expiry_days" 
                                min="1" max="90" value="7" 
                                class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                               oninput="updateExpiryDisplay(this.value)">
+                               oninput="updateExpiryDisplay(this.value)"
+                               onchange="saveSettingWithDelay('expiry_days', this.value)">
                         <div class="flex justify-between items-center text-sm">
                             <span id="expiryDisplay" class="font-bold text-blue-400">7 days</span>
                             <small class="text-gray-500">Max: 3 months</small>
@@ -109,7 +116,8 @@
                                id="max_views" 
                                min="1" max="100" value="10" 
                                class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                               oninput="updateViewsDisplay(this.value)">
+                               oninput="updateViewsDisplay(this.value)"
+                               onchange="saveSettingWithDelay('max_views', this.value)">
                         <div class="flex justify-between items-center text-sm">
                             <span id="viewsDisplay" class="font-bold text-blue-400">10 views</span>
                             <small class="text-gray-500">Max: 100 views</small>
@@ -124,7 +132,8 @@
                             <input type="checkbox" 
                                    name="require_click" 
                                    checked
-                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                                   onchange="saveSettingImmediately('require_click', this.checked)">
                             <span class="text-sm font-medium text-gray-200">🛡️ Require click to reveal</span>
                         </label>
                         <small class="block text-xs text-gray-400 ml-8">Hides content from web crawlers and requires user interaction</small>
@@ -134,7 +143,8 @@
                         <label class="flex items-center space-x-3 cursor-pointer">
                             <input type="checkbox" 
                                    name="auto_delete"
-                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                                   onchange="saveSettingImmediately('auto_delete', this.checked)">
                             <span class="text-sm font-medium text-gray-200">🗑️ Allow manual deletion</span>
                         </label>
                         <small class="block text-xs text-gray-400 ml-8">Adds a delete button when content is viewed (viewer can choose to delete)</small>
@@ -145,7 +155,8 @@
                             <input type="checkbox" 
                                    name="track_history" 
                                    id="track_history"
-                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2">
+                                   class="w-5 h-5 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                                   onchange="saveSettingImmediately('track_history', this.checked)">
                             <span class="text-sm font-medium text-gray-200">📚 Save to my history</span>
                         </label>
                         <small class="block text-xs text-gray-400 ml-8">Keep a record of your created links (stored in browser)</small>
@@ -155,7 +166,7 @@
         </div>
         
         <!-- Action buttons -->
-        <div class="text-center pt-6 border-t border-gray-700">
+        <div class="text-center pt-6">
             <button type="submit" 
                     class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-4 px-8 rounded-lg text-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50">
                 🔒 Create Secure Link
@@ -290,6 +301,30 @@ function updateViewsDisplay(views) {
     display.textContent = views + (views === '1' ? ' view' : ' views');
 }
 
+// Auto-save settings functionality
+let saveTimeouts = {};
+
+function saveSettingWithDelay(settingName, value) {
+    // Clear any existing timeout for this setting
+    if (saveTimeouts[settingName]) {
+        clearTimeout(saveTimeouts[settingName]);
+    }
+    
+    // Set a new timeout to save after user stops changing the value
+    saveTimeouts[settingName] = setTimeout(() => {
+        saveSettingImmediately(settingName, value);
+    }, 1000); // Wait 1 second after user stops moving slider
+}
+
+function saveSettingImmediately(settingName, value) {
+    setCookie('pwpush_' + settingName, value, 30);
+    
+    // Show success notification
+    if (typeof showPopup === 'function') {
+        showPopup('Setting "' + settingName.replace('_', ' ') + '" saved automatically!', 'success', 2000);
+    }
+}
+
 function copyToClipboard() {
     const urlInput = document.getElementById('pushUrl');
     const btn = document.querySelector('.copy-btn');
@@ -346,6 +381,91 @@ function copyToClipboard() {
                 btn.textContent = originalText;
                 btn.style.background = '';
             }, 2000);
+        }
+    }
+}
+
+function copyAsMessage() {
+    const urlInput = document.getElementById('pushUrl');
+    const btn = document.querySelector('.copy-message-btn');
+    
+    if (!urlInput) {
+        console.error('pushUrl input not found');
+        return;
+    }
+    
+    if (!btn) {
+        console.error('copy-message-btn button not found');
+        return;
+    }
+    
+    // Get the data from meta tag
+    const successData = document.querySelector('meta[name="success-data"]');
+    if (!successData) {
+        console.error('No success data found');
+        return;
+    }
+    
+    const data = JSON.parse(successData.content);
+    const url = data.url;
+    const expiresAt = data.expiresAt;
+    const maxViews = data.maxViews;
+    
+    // Create the message
+    const message = `The secret has been shared via the link below, it will expire on ${expiresAt} or after ${maxViews} views, whichever comes first:
+${url}`;
+    
+    const originalText = btn.textContent;
+    
+    // Use modern clipboard API if available, fallback to execCommand
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(message).then(() => {
+            btn.textContent = '✅ Message Copied!';
+            btn.style.background = '#4caf50';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy message: ', err);
+            fallbackCopyMessage();
+        });
+    } else {
+        fallbackCopyMessage();
+    }
+    
+    function fallbackCopyMessage() {
+        // Create a temporary textarea to copy the message
+        const textArea = document.createElement('textarea');
+        textArea.value = message;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            btn.textContent = '✅ Message Copied!';
+            btn.style.background = '#4caf50';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        } catch (err) {
+            console.error('Failed to copy message: ', err);
+            btn.textContent = '❌ Failed';
+            btn.style.background = '#f44336';
+            
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.background = '';
+            }, 2000);
+        } finally {
+            document.body.removeChild(textArea);
         }
     }
 }

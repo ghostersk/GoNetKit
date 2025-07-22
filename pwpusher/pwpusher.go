@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"headeranalyzer/security"
+	"gonetkit/security"
 
 	_ "github.com/mattn/go-sqlite3"
 	"golang.org/x/crypto/bcrypt"
@@ -605,9 +605,18 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 
 	// Prepare response URL with new format
 	scheme := "http"
+
+	// Check for HTTPS in multiple ways
 	if r.TLS != nil {
 		scheme = "https"
+	} else if r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	} else if r.Header.Get("X-Forwarded-Ssl") == "on" {
+		scheme = "https"
+	} else if strings.HasPrefix(r.Header.Get("Referer"), "https://") {
+		scheme = "https"
 	}
+
 	fullURL := fmt.Sprintf("%s://%s/s/%s?k=%s", scheme, r.Host, id, additionalKey)
 
 	// Save to user's history if tracking is enabled
@@ -632,6 +641,7 @@ func (p *PWPusher) handleCreatePush(w http.ResponseWriter, r *http.Request) {
 			"PushURL":     fullURL,
 			"ID":          id,
 			"ExpiresAt":   expiresAt.Format("2006-01-02 15:04:05"),
+			"MaxViews":    req.MaxViews,
 			"CurrentPage": "pwpush",
 		})
 	}

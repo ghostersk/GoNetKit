@@ -1,17 +1,21 @@
-# Email Header Analyzer - Build & Usage Instructions
+# GoNetKit
+- Go Web App where you can find many usefull IT tools
+- These tools should provide simple and nice way for user to get what they need without requiring signing up or sharing details with 3rd parties.
 
 ## Building a Single-File Executable (Windows & Linux)
 
 This app uses Go's `embed` package to bundle all static files (web UI, icons, CSS, etc.) into a single executable. You do **not** need to distribute the `web/` folder separately.
+- You will need C building package, especially on Windows as this app using SQLITE, if you do not need password pushser, then remove it and you will not need it to make windows built.
+- built scripts are in `app_build` folder, but may need fixing as the app is in development still and I built it on few computers when i have time.
 
 ### Prerequisites
-- [Go 1.16+](https://golang.org/dl/) (required for `embed`)
+- [Go 1.24+](https://golang.org/dl/) (required for `embed`)
 - (Optional) [Python 3](https://www.python.org/) with Pillow for icon conversion
 ```go
-go mod init headeranalyzer
+go mod init gonetkit
 go mod tidy
 ```
-### 1. Prepare Icons
+### 1. Prepare Icons (custom icon Optional)
 - Place your tray icon and favicon in `web/icon.png` and `web/favicon.png`.
 - For Windows tray icon, you **must** use a `.ico` file. Use the provided script:
 
@@ -20,6 +24,7 @@ go mod tidy
 python web/convert_icon.py web/icon.png web/icon.ico
 # using ImageMagick convertor
 magick envelope.jpg -define icon:auto-resize=16,32,48,64 favicon.ico
+# https://github.com/ImageMagick/ImageMagick/releases
 ImageMagick\magick.exe web\icon.png -define icon:auto-resize=16,32,48,64 web\favicon.ico
 ImageMagick\magick.exe identify web\favicon.ico
 # App Icon:
@@ -37,19 +42,19 @@ go clean -cache
 #### Windows (from Windows PowerShell or Command Prompt):
 ```powershell
 # PowerShell (set environment variables before the command)
-$env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
+$env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags "-H=windowsgui" -o GoNetKit.exe main.go
 ```
 ```cmd
 REM Command Prompt (set environment variables before the command)
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
+go build -ldflags "-H=windowsgui" -o GoNetKit.exe main.go
 ```
 
 #### Linux/macOS (from Bash):
 ```sh
 # Build 64-bit Linux executable
-GOOS=linux GOARCH=amd64 go build -o headeranalyzer main.go
+GOOS=linux GOARCH=amd64 go build -o goNetKit main.go
 ```
 
 - The resulting executable contains all static files and icons.
@@ -74,13 +79,13 @@ By default, Go does not embed an icon in the .exe. To add your tray/web icon as 
 #### Windows (from Windows PowerShell or Command Prompt):
 ```powershell
 # PowerShell (set environment variables before the command)
-$env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
+$env:GOOS="windows"; $env:GOARCH="amd64"; go build -ldflags "-H=windowsgui" -o GoNetKit.exe main.go
 ```
 ```cmd
 REM Command Prompt (set environment variables before the command)
 set GOOS=windows
 set GOARCH=amd64
-go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
+go build -ldflags "-H=windowsgui" -o GoNetKit.exe main.go
 ```
 
 - The `-ldflags "-H=windowsgui"` flag prevents a console window from opening when you run the app.
@@ -89,7 +94,7 @@ go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
 #### Linux/macOS (from Bash):
 ```sh
 # Build 64-bit Linux executable
-GOOS=linux GOARCH=amd64 go build -o headeranalyzer main.go
+GOOS=linux GOARCH=amd64 go build -o goNetKit main.go
 ```
 
 - The resulting executable contains all static files and icons.
@@ -97,9 +102,9 @@ GOOS=linux GOARCH=amd64 go build -o headeranalyzer main.go
 ### 3. Run the App
 
 - Double-click or run from terminal:
-  - On Windows: `headeranalyzer.exe`
-  - On Linux: `./headeranalyzer`
-- The app will start a web server (default: http://localhost:8080) and show a system tray icon.
+  - On Windows: `GoNetKit.exe`
+  - On Linux: `./goNetKit`
+- The app will start a web server (default: http://localhost:5555) and show a system tray icon.
 - Use the tray menu to open the web UI or quit the app.
 
 ### 4. Usage Notes
@@ -123,8 +128,8 @@ If you followed all steps and the icon still does not appear:
 - **Try building without cross-compiling:** If you are cross-compiling, try building directly on Windows.
 - **Try go build without -ldflags:** Rarely, the `-ldflags` flag can interfere. Try building with and without it:
   ```powershell
-  go build -o headeranalyzer.exe main.go
-  go build -ldflags "-H=windowsgui" -o headeranalyzer.exe main.go
+  go build -o GoNetKit.exe main.go
+  go build -ldflags "-H=windowsgui" -o GoNetKit.exe main.go
   ```
 - **Try go generate:** If you use `go generate`, ensure it does not overwrite or remove `icon.syso`.
 

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"headeranalyzer/security"
+	"gonetkit/security"
 )
 
 var validator = security.NewInputValidator()

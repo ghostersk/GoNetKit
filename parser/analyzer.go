@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"headeranalyzer/resolver"
+	"gonetkit/resolver"
 )
 
 type Report struct {

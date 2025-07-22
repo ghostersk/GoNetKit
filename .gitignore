@@ -3,3 +3,6 @@
 /ImageMagick
 wordlist.txt
 *.db
+
+/app_build/README.md
+/app_build/tailwindcss-linux-x64
