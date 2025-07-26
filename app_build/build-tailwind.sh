@@ -2,12 +2,10 @@
 
 # Tailwind CSS Build Script for Header Analyzer
 # This script downloads Tailwind CLI and generates CSS for production
-
+# ./tailwindcss-linux-x64 -o web/style-tailwind.css --minify
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TAILWIND_CLI="$PROJECT_ROOT/app_build/tailwindcss-linux-x64"
-INPUT_CSS="$PROJECT_ROOT/web/style-input.css"
 OUTPUT_CSS="$PROJECT_ROOT/web/style-tailwind.css"
 CONFIG_FILE="$PROJECT_ROOT/tailwind.config.js"
 
@@ -51,13 +49,13 @@ fi
 echo "🔨 Building Tailwind CSS..."
 if [ "$1" = "--watch" ]; then
     echo "👀 Starting watch mode..."
-    "$TAILWIND_CLI" -i "$INPUT_CSS" -o "$OUTPUT_CSS" --watch
+    "$TAILWIND_CLI" -o "$OUTPUT_CSS" --watch
 elif [ "$1" = "--dev" ]; then
     echo "🛠️ Building development CSS..."
-    "$TAILWIND_CLI" -i "$INPUT_CSS" -o "$OUTPUT_CSS"
+    "$TAILWIND_CLI" -o "$OUTPUT_CSS"
 else
     echo "📦 Building production CSS (minified)..."
-    "$TAILWIND_CLI" -i "$INPUT_CSS" -o "$OUTPUT_CSS" --minify
+    "$TAILWIND_CLI" -o "$OUTPUT_CSS" --minify
 fi
 
 echo "✅ Tailwind CSS build complete!"
